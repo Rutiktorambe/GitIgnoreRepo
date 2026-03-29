@@ -1,0 +1,244 @@
+{
+    "Quote": [
+        {
+            "z": {
+                "q": {
+                    "a": "a_row1"
+                },
+                "p": {
+                    "e": "e_row1",
+                    "f": "f_row1",
+                    "g": "g_row1"
+                },
+                "r": {
+                    "x": "x",
+                    "o": "0_row1",
+                    "a1": "a1",
+                    "a2": "a2",
+                    "a3": "a3",
+                    "a4": "a4",
+                    "a5": "a5"
+                },
+                "e": [
+                    {
+                        "Pl_inputb": "11",
+                        "Pl_inputc": "True",
+                        "Pl_inputd": "24-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "11",
+                        "Pl_inputc": "True",
+                        "Pl_inputd": "24-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "11",
+                        "Pl_inputc": "True",
+                        "Pl_inputd": "24-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "Pl_input4_b_row1",
+                        "Pl_inputc": "c",
+                        "Pl_inputd": "11/12/1852"
+                    }
+                ],
+                "t": [
+                    {
+                        "Tradeh": "Trade1h_row1",
+                        "hotMaili": "hotMail1i_row1"
+                    },
+                    {
+                        "Tradeh": "Trade2h_row1",
+                        "hotMaili": "hotMail2i_row1"
+                    },
+                    {
+                        "Tradeh": "Trade3h_row1",
+                        "hotMaili": "hotMail3i_row1"
+                    }
+                ],
+                "op": [
+                    {
+                        "te": "te_row1",
+                        "rx": "rx",
+                        "qeq": "eq"
+                    },
+                    {
+                        "qeq": "q2eq_row1",
+                        "te": "te",
+                        "rx": "rx"
+                    }
+                ],
+                "tp": [
+                    {
+                        "trade": "trade1_row1"
+                    },
+                    {
+                        "trade": "trade2_row1"
+                    },
+                    {
+                        "trade": "trade3_row1"
+                    }
+                ]
+            }
+        },
+        {
+            "z": {
+                "q": {
+                    "a": "a_row2"
+                },
+                "p": {
+                    "e": "e_row2",
+                    "f": "f_row2",
+                    "g": "g_row2"
+                },
+                "r": {
+                    "x": "x",
+                    "o": "0_row2",
+                    "a1": "a1",
+                    "a2": "a2",
+                    "a3": "a3",
+                    "a4": "a4",
+                    "a5": "a5"
+                },
+                "e": [
+                    {
+                        "Pl_inputb": "12",
+                        "Pl_inputc": "False",
+                        "Pl_inputd": "25-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "12",
+                        "Pl_inputc": "False",
+                        "Pl_inputd": "25-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "12",
+                        "Pl_inputc": "False",
+                        "Pl_inputd": "25-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "Pl_input4_b_row2",
+                        "Pl_inputc": "c",
+                        "Pl_inputd": "11/12/1852"
+                    }
+                ],
+                "t": [
+                    {
+                        "Tradeh": "Trade1h_row2",
+                        "hotMaili": "hotMail1i_row2"
+                    },
+                    {
+                        "Tradeh": "Trade2h_row2",
+                        "hotMaili": "hotMail2i_row2"
+                    },
+                    {
+                        "Tradeh": "Trade3h_row2",
+                        "hotMaili": "hotMail3i_row2"
+                    }
+                ],
+                "op": [
+                    {
+                        "te": "te_row2",
+                        "rx": "rx",
+                        "qeq": "eq"
+                    },
+                    {
+                        "qeq": "q2eq_row2",
+                        "te": "te",
+                        "rx": "rx"
+                    }
+                ],
+                "tp": [
+                    {
+                        "trade": "trade1_row2"
+                    },
+                    {
+                        "trade": "trade2_row2"
+                    },
+                    {
+                        "trade": "trade3_row2"
+                    }
+                ]
+            }
+        },
+        {
+            "z": {
+                "q": {
+                    "a": "a_row3"
+                },
+                "p": {
+                    "e": "e_row3",
+                    "f": "f_row3",
+                    "g": "g_row3"
+                },
+                "r": {
+                    "x": "x",
+                    "o": "0_row3",
+                    "a1": "a1",
+                    "a2": "a2",
+                    "a3": "a3",
+                    "a4": "a4",
+                    "a5": "a5"
+                },
+                "e": [
+                    {
+                        "Pl_inputb": "13",
+                        "Pl_inputc": "True",
+                        "Pl_inputd": "26-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "13",
+                        "Pl_inputc": "True",
+                        "Pl_inputd": "26-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "13",
+                        "Pl_inputc": "True",
+                        "Pl_inputd": "26-07-2025"
+                    },
+                    {
+                        "Pl_inputb": "Pl_input4_b_row3",
+                        "Pl_inputc": "c",
+                        "Pl_inputd": "11/12/1852"
+                    }
+                ],
+                "t": [
+                    {
+                        "Tradeh": "Trade1h_row3",
+                        "hotMaili": "hotMail1i_row3"
+                    },
+                    {
+                        "Tradeh": "Trade2h_row3",
+                        "hotMaili": "hotMail2i_row3"
+                    },
+                    {
+                        "Tradeh": "Trade3h_row3",
+                        "hotMaili": "hotMail3i_row3"
+                    }
+                ],
+                "op": [
+                    {
+                        "te": "te_row3",
+                        "rx": "rx",
+                        "qeq": "eq"
+                    },
+                    {
+                        "qeq": "q2eq_row3",
+                        "te": "te",
+                        "rx": "rx"
+                    }
+                ],
+                "tp": [
+                    {
+                        "trade": "trade1_row3"
+                    },
+                    {
+                        "trade": "trade2_row3"
+                    },
+                    {
+                        "trade": "trade3_row3"
+                    }
+                ]
+            }
+        }
+    ]
+}
