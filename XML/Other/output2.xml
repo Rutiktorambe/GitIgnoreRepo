@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+    <Person>
+        <ID>
+            <ID_Value value="102"/>
+            <Name_Value value="Meera"/>
+            <City_Value value="UnknownCity"/>
+             <Pincode_Value value="0"/>
+             <Region_Value value="West"/>
+        </ID>
+        <Name>
+            
+        </Name>
+        <Address>
+            <City>
+                
+            </City>
+            <Pincode>
+               
+            </Pincode>
+            <Location>
+                <Region>
+                    
+                </Region>
+            </Location>
+        </Address>
+    </Person>
+</Root>
