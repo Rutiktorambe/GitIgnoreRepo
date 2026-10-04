@@ -1,0 +1,166 @@
+<root>
+
+  <!-- Sibling 1 -->
+  <ClaimsExperiences>
+    <ClaimsExperience>
+      <msgPartRef value="TC1"/>
+      <MessageDetail PartRef="TC001"/>
+      <MessageDetail_SubmissionRef value="1"/>
+      <ClaimsExperience_PartRef value="CE001"/>
+      <ClaimsExperience_VehiclesOnMID error="ROW_VALUE_NO_VALUE"/>
+      <ClaimsExperience_MIICReportInd error="ROW_VALUE_NO_VALUE"/>
+    </ClaimsExperience>
+
+    <ClaimsExperience>
+      <msgPartRef value="TC2"/>
+      <MessageDetail PartRef="TC002"/>
+      <MessageDetail_SubmissionRef value="2"/>
+      <ClaimsExperience_PartRef value="CE002"/>
+      <ClaimsExperience_VehiclesOnMID error="ROW_VALUE_NO_VALUE"/>
+      <ClaimsExperience_MIICReportInd error="ROW_VALUE_NO_VALUE"/>
+    </ClaimsExperience>
+  </ClaimsExperiences>
+
+  <!-- Sibling 2 (4 children structure) -->
+  <Policies>
+    <Policy>
+      <msgPartRef value="TC1"/>
+      <PolicyNumber value="PN001"/>
+      <PolicyType value="Motor"/>
+      <StartDate value="2026-01-01"/>
+      <EndDate value="2027-01-01"/>
+    </Policy>
+
+    <Policy>
+      <msgPartRef value="TC2"/>
+      <PolicyNumber value="PN002"/>
+      <PolicyType value="Health"/>
+      <StartDate value="2026-02-01"/>
+      <EndDate value="2027-02-01"/>
+    </Policy>
+  </Policies>
+
+  <!-- Sibling 3 (6 children structure) -->
+  <Customers>
+    <Customer>
+      <msgPartRef value="TC1"/>
+      <CustomerId value="CUST001"/>
+      <Name value="John"/>
+      <Age value="30"/>
+      <City value="Delhi"/>
+      <Phone value="9999999999"/>
+      <Email value="john@test.com"/>
+    </Customer>
+  </Customers>
+
+  <!-- Sibling 4 -->
+  <Payments>
+    <Payment>
+      <msgPartRef value="TC1"/>
+      <PaymentId value="PAY001"/>
+      <Amount value="1000"/>
+      <Currency value="INR"/>
+      <Status value="SUCCESS"/>
+    </Payment>
+  </Payments>
+
+  <!-- Sibling 5 (10+ children structure) -->
+  <Orders>
+    <Order>
+      <msgPartRef value="TC1"/>
+      <OrderId value="ORD001"/>
+      <Item value="Laptop"/>
+      <Qty value="1"/>
+      <Price value="75000"/>
+      <Tax value="5000"/>
+      <Discount value="2000"/>
+      <Shipping value="500"/>
+      <Status value="Delivered"/>
+      <OrderDate value="2026-05-01"/>
+      <DeliveryDate value="2026-05-03"/>
+      <Address value="Gurgaon"/>
+    </Order>
+  </Orders>
+
+  <!-- Sibling 6 -->
+  <Vehicles>
+    <Vehicle>
+      <msgPartRef value="TC1"/>
+      <VehicleId value="VH001"/>
+      <Type value="Car"/>
+      <Model value="Sedan"/>
+      <Year value="2022"/>
+    </Vehicle>
+  </Vehicles>
+
+  <!-- Sibling 7 -->
+  <Logs>
+    <Log>
+      <msgPartRef value="TC1"/>
+      <Level value="INFO"/>
+      <Message value="Process Started"/>
+      <Timestamp value="10:00"/>
+    </Log>
+
+    <Log>
+      <msgPartRef value="TC2"/>
+      <Level value="ERROR"/>
+      <Message value="Validation Failed"/>
+      <Timestamp value="10:05"/>
+    </Log>
+  </Logs>
+
+  <!-- Sibling 8 -->
+  <Settings>
+    <Setting>
+      <msgPartRef value="TC1"/>
+      <Key value="Theme"/>
+      <Value value="Dark"/>
+    </Setting>
+  </Settings>
+
+  <!-- Sibling 9 -->
+  <Notifications>
+    <Notification>
+      <msgPartRef value="TC1"/>
+      <Type value="Email"/>
+      <Status value="Sent"/>
+    </Notification>
+  </Notifications>
+
+  <!-- Sibling 10 -->
+  <Reports>
+    <Report>
+      <msgPartRef value="TC1"/>
+      <ReportId value="REP001"/>
+      <GeneratedDate value="2026-05-01"/>
+    </Report>
+    <Report>
+      <msgPartRef value="TC1"/>
+      <ReportId value="REP002"/>
+      <GeneratedDate value="2026-05-01"/>
+    </Report>
+    <Report>
+      <msgPartRef value="TC2"/>
+      <ReportId value="REP003"/>
+      <GeneratedDate value="2026-05-01"/>
+    </Report>
+  </Reports>
+
+  <!-- Sibling 11 -->
+  <AuditTrail>
+    <Audit>
+      <msgPartRef value="TC1"/>
+      <User value="Admin"/>
+      <Action value="Update"/>
+      <Time value="11:00"/>
+    </Audit>
+    <Audit>
+      <msgPartRef value="TC2"/>
+      <User value="Admin"/>
+      <Action value="Update"/>
+      <Time value="12:00"/>
+    </Audit>
+  </AuditTrail>
+
+</root>

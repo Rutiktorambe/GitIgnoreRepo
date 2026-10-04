@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Referral Portal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="container">
+<header class="header">
+<div>
+<h1>Employee Referral Portal</h1>
+<p>Refer talented candidates for open positions</p>
+</div>
+<a href="/export/referrals" class="export-btn">Export Excel</a>
+</header>
+
+<section class="dashboard">
+<div class="card"><span>Total Referrals</span><strong id="totalReferrals">0</strong></div>
+<div class="card"><span>Actuarial Referrals</span><strong id="actuarialReferrals">0</strong></div>
+<div class="card"><span>Technical Referrals</span><strong id="technicalReferrals">0</strong></div>
+<div class="card"><span>Other Referrals</span><strong id="otherReferrals">0</strong></div>
+</section>
+
+<section class="form-section">
+<h2>Submit Employee Referral</h2>
+<form id="referralForm">
+<div class="form-grid">
+<div class="form-group">
+<label>Referring Employee</label>
+<select id="employee" required><option value="">Select Employee</option></select>
+</div>
+<div class="form-group">
+<label>Employee Team</label>
+<input id="employeeTeam" readonly placeholder="Automatically populated">
+</div>
+<div class="form-group">
+<label>Job Role</label>
+<select id="jobRole" required><option value="">Select Job</option></select>
+</div>
+<div class="form-group">
+<label>Job Location</label>
+<input id="jobLocation" readonly>
+</div>
+<div class="form-group">
+<label>Candidate Name</label>
+<input id="candidateName" required>
+</div>
+<div class="form-group">
+<label>Candidate Email</label>
+<input id="candidateEmail" type="email" required>
+</div>
+<div class="form-group">
+<label>Candidate Phone</label>
+<input id="candidatePhone">
+</div>
+<div class="form-group">
+<label>Experience (Years)</label>
+<input id="experience" type="number" min="0" max="50">
+</div>
+</div>
+
+<div id="requirementsSection" class="requirements hidden">
+<h3>Job Requirements</h3>
+<div id="requirementsList"></div>
+</div>
+
+<div id="actuarialSection" class="actuarial-section hidden">
+<h3>Actuarial Information</h3>
+<div class="form-group">
+<label>Actuarial Exam / Qualification</label>
+<input id="actuarialExam" placeholder="Example: CS1, CM1, CB1">
+<small id="examHelp"></small>
+</div>
+</div>
+
+<button type="submit" class="submit-btn">Submit Referral</button>
+</form>
+<div id="message" class="message"></div>
+</section>
+
+<section class="table-section">
+<div class="table-header">
+<h2>Referral History</h2>
+<input id="search" placeholder="Search referrals...">
+</div>
+<div class="table-wrapper">
+<table>
+<thead><tr>
+<th>ID</th><th>Employee</th><th>Team</th><th>Candidate</th>
+<th>Email</th><th>Job</th><th>Category</th><th>Experience</th>
+<th>Actuarial Exam</th><th>Date</th><th>Status</th>
+</tr></thead>
+<tbody id="referralTable"></tbody>
+</table>
+</div>
+</section>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

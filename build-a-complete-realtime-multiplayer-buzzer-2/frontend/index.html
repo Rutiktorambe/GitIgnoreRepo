@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Realtime Buzzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="page-shell home-shell">
+        <section class="home-hero">
+            <div class="hero-copy">
+                <p class="eyebrow">Realtime competition rooms</p>
+                <h1>Realtime Buzzer</h1>
+                <p class="hero-subtitle">Create a room, invite players, and let the backend decide who clicked first.</p>
+            </div>
+
+            <div class="home-panel">
+                <div class="connection-row">
+                    <span id="connectionDot" class="connection-dot"></span>
+                    <span id="connectionText">Connecting...</span>
+                </div>
+
+                <button id="createRoomButton" class="primary-action" type="button">
+                    <span class="button-label">Create Room</span>
+                    <span class="button-loader" aria-hidden="true"></span>
+                </button>
+
+                <form id="joinRoomForm" class="join-form">
+                    <label for="roomCodeInput">Join Room Code</label>
+                    <div class="join-row">
+                        <input id="roomCodeInput" name="roomCode" type="text" inputmode="text" autocomplete="off" maxlength="6" placeholder="ABCD12" required>
+                        <button id="joinRoomButton" class="secondary-action" type="submit">Join</button>
+                    </div>
+                </form>
+
+                <p id="homeStatus" class="status-message" role="status"></p>
+
+                <form id="serverSetup" class="server-setup hidden">
+                    <label for="serverUrlInput">Backend URL</label>
+                    <div class="join-row">
+                        <input id="serverUrlInput" name="serverUrl" type="url" placeholder="https://your-backend.onrender.com">
+                        <button class="secondary-action" type="submit">Save</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

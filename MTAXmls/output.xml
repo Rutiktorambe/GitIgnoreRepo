@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+
+  
+  <ClaimsExperiences>
+    <ClaimsExperience>
+      <msgPartRef value="TC1" />
+      <MessageDetail PartRef="TC001" />
+      <MessageDetail_SubmissionRef value="1" />
+      <ClaimsExperience_PartRef value="CE001" />
+      <ClaimsExperience_VehiclesOnMID error="ROW_VALUE_NO_VALUE" />
+      <ClaimsExperience_MIICReportInd error="ROW_VALUE_NO_VALUE" />
+    </ClaimsExperience>
+
+    </ClaimsExperiences>
+
+  
+  <Policies>
+    <Policy>
+      <msgPartRef value="TC1" />
+      <PolicyNumber value="PN001" />
+      <PolicyType value="Motor" />
+      <StartDate value="2026-01-01" />
+      <EndDate value="2027-01-01" />
+    </Policy>
+
+    </Policies>
+
+  
+  <Customers>
+    <Customer>
+      <msgPartRef value="TC1" />
+      <CustomerId value="CUST001" />
+      <Name value="John" />
+      <Age value="30" />
+      <City value="Delhi" />
+      <Phone value="9999999999" />
+      <Email value="john@test.com" />
+    </Customer>
+  </Customers>
+
+  
+  <Payments>
+    <Payment>
+      <msgPartRef value="TC1" />
+      <PaymentId value="PAY001" />
+      <Amount value="1000" />
+      <Currency value="INR" />
+      <Status value="SUCCESS" />
+    </Payment>
+  </Payments>
+
+  
+  <Orders>
+    <Order>
+      <msgPartRef value="TC1" />
+      <OrderId value="ORD001" />
+      <Item value="Laptop" />
+      <Qty value="1" />
+      <Price value="75000" />
+      <Tax value="5000" />
+      <Discount value="2000" />
+      <Shipping value="500" />
+      <Status value="Delivered" />
+      <OrderDate value="2026-05-01" />
+      <DeliveryDate value="2026-05-03" />
+      <Address value="Gurgaon" />
+    </Order>
+  </Orders>
+
+  
+  <Vehicles>
+    <Vehicle>
+      <msgPartRef value="TC1" />
+      <VehicleId value="VH001" />
+      <Type value="Car" />
+      <Model value="Sedan" />
+      <Year value="2022" />
+    </Vehicle>
+  </Vehicles>
+
+  
+  <Logs>
+    <Log>
+      <msgPartRef value="TC1" />
+      <Level value="INFO" />
+      <Message value="Process Started" />
+      <Timestamp value="10:00" />
+    </Log>
+
+    </Logs>
+
+  
+  <Settings>
+    <Setting>
+      <msgPartRef value="TC1" />
+      <Key value="Theme" />
+      <Value value="Dark" />
+    </Setting>
+  </Settings>
+
+  
+  <Notifications>
+    <Notification>
+      <msgPartRef value="TC1" />
+      <Type value="Email" />
+      <Status value="Sent" />
+    </Notification>
+  </Notifications>
+
+  
+  <Reports>
+    <Report>
+      <msgPartRef value="TC1" />
+      <ReportId value="REP001" />
+      <GeneratedDate value="2026-05-01" />
+    </Report>
+    <Report>
+      <msgPartRef value="TC1" />
+      <ReportId value="REP002" />
+      <GeneratedDate value="2026-05-01" />
+    </Report>
+    </Reports>
+
+  
+  <AuditTrail>
+    <Audit>
+      <msgPartRef value="TC1" />
+      <User value="Admin" />
+      <Action value="Update" />
+      <Time value="11:00" />
+    </Audit>
+    </AuditTrail>
+
+</root>

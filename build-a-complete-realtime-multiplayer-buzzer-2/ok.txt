@@ -1,0 +1,3 @@
+Publishable key-  sb_publishable_qezpg2ajutt7ZGs_BmhU3Q_g9KxcSTd
+Secret keys -  sb_secret_weBtPvEF7z0ZJwbJShklsA_6EhzC461
+API URL:  https://xycqvifilbhhujrhtrgz.supabase.co/rest/v1/

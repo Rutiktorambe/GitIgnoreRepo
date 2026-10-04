@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Buzzer Room</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="page-shell room-shell">
+        <header class="room-header">
+            <a class="back-link" href="index.html">Home</a>
+            <div class="room-code-block">
+                <span>Room</span>
+                <strong id="roomCodeLabel">------</strong>
+                <button id="copyRoomCodeButton" class="icon-button" type="button" title="Copy room code" aria-label="Copy room code">⧉</button>
+            </div>
+            <div class="connection-row compact">
+                <span id="connectionDot" class="connection-dot"></span>
+                <span id="connectionText">Connecting...</span>
+            </div>
+        </header>
+
+        <section class="room-grid">
+            <section class="arena-panel">
+                <div class="round-row">
+                    <span id="roundLabel">Round 1</span>
+                    <span id="buzzerStateLabel">Waiting for players</span>
+                </div>
+
+                <button id="buzzerButton" class="buzzer-button" type="button" disabled>
+                    <span class="buzzer-shine"></span>
+                    <span class="buzzer-text">BUZZ</span>
+                </button>
+
+                <p id="roomStatus" class="status-message" role="status"></p>
+
+                <div id="hostControls" class="host-controls hidden">
+                    <button id="resetRoundButton" class="secondary-action" type="button">Reset Round</button>
+                </div>
+            </section>
+
+            <aside class="side-panel">
+                <section class="list-section">
+                    <div class="section-heading">
+                        <h2>Players</h2>
+                        <span id="playerCount">0 online</span>
+                    </div>
+                    <ul id="playersList" class="players-list"></ul>
+                </section>
+
+                <section class="list-section">
+                    <div class="section-heading">
+                        <h2>Scoreboard</h2>
+                    </div>
+                    <ol id="scoreboardList" class="scoreboard-list"></ol>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <div id="joinOverlay" class="overlay">
+        <form id="joinNameForm" class="modal-card">
+            <p class="eyebrow">Join competition</p>
+            <h1 id="joinRoomTitle">Room ------</h1>
+            <label for="playerNameInput">Your name</label>
+            <input id="playerNameInput" name="playerName" type="text" maxlength="32" autocomplete="name" placeholder="Ada Lovelace" required>
+            <button id="joinNameButton" class="primary-action" type="submit">
+                <span class="button-label">Join Room</span>
+                <span class="button-loader" aria-hidden="true"></span>
+            </button>
+            <p id="joinStatus" class="status-message" role="status"></p>
+        </form>
+    </div>
+
+    <div id="winnerModal" class="overlay winner-overlay hidden" aria-live="polite">
+        <div class="winner-card">
+            <div class="winner-crown">🏆</div>
+            <h2 id="winnerText">Someone clicked first!</h2>
+            <button id="closeWinnerButton" class="secondary-action" type="button">Close</button>
+        </div>
+    </div>
+
+    <form id="serverSetup" class="floating-setup hidden">
+        <label for="serverUrlInput">Backend URL</label>
+        <div class="join-row">
+            <input id="serverUrlInput" name="serverUrl" type="url" placeholder="https://your-backend.onrender.com">
+            <button class="secondary-action" type="submit">Save</button>
+        </div>
+    </form>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="room.js"></script>
+</body>
+</html>
