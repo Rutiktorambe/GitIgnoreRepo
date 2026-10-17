@@ -80,6 +80,7 @@ class SowResource(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey("sow_projects.id"), nullable=False)
     name = db.Column(db.String(150), nullable=False)
     billing_level = db.Column(db.String(100))
+    team = db.Column(db.String(100))
     allocation_percent = db.Column(db.Numeric(6, 2), default=100)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
@@ -254,6 +255,7 @@ def create_project():
 
         resource_names = request.form.getlist("resource_name[]")
         levels = request.form.getlist("resource_level[]")
+        teams = request.form.getlist("resource_team[]")
         allocations = request.form.getlist("resource_allocation[]")
         starts = request.form.getlist("resource_start[]")
         ends = request.form.getlist("resource_end[]")
@@ -264,6 +266,7 @@ def create_project():
             project.resources.append(SowResource(
                 name=name.strip(),
                 billing_level=levels[i] if i < len(levels) else "",
+                team=teams[i] if i < len(teams) else "",
                 allocation_percent=parse_decimal(allocations[i] if i < len(allocations) else "100"),
                 start_date=parse_date(starts[i] if i < len(starts) else ""),
                 end_date=parse_date(ends[i] if i < len(ends) else ""),

@@ -17,7 +17,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
-Open http://127.0.0.1:5000. SQLite creates `sow_demo.db` automatically when the app starts.
+Open http://127.0.0.1:5000. SQLite creates the database in `instance/sow_demo.db` automatically when the app starts. The ZIP includes a pre-populated SQLite demo database with one sample project, three resources and four milestones. To seed a fresh database, run `python seed_demo.py`.
 
 ## Connect to Microsoft SQL Server
 1. Install Microsoft ODBC Driver 18 for SQL Server.
@@ -52,11 +52,12 @@ If your SQL Server uses a certificate trusted by your machine, remove `TrustServ
 
 ## Database design
 - `sow_projects`: project identity, dates, region, lead, cost, scope, risk and declaration text.
-- `sow_resources`: one row per assigned resource, linked to `sow_projects.id`.
+- `sow_resources`: one row per assigned resource, linked to `sow_projects.id`, including billing level and team.
 - `sow_milestones`: one row per milestone/activity, linked to `sow_projects.id`.
 
-The app uses `db.create_all()` for a starter/demo. For production, add Flask-Migrate/Alembic migrations, authentication and authorization, CSRF protection, stronger server-side validation, audit history, logging, and a secrets manager. Do not put real client or employee data into an unauthenticated deployment.
+The app now includes collapsible form sections, a sticky section navigator, billing-level and team dropdowns. The app uses `db.create_all()` for a starter/demo. For production, add Flask-Migrate/Alembic migrations, authentication and authorization, CSRF protection, stronger server-side validation, audit history, logging, and a secrets manager. Do not put real client or employee data into an unauthenticated deployment.
 
 ## Notes
 - Reference screenshots contain personal/business details; this app is prefilled with sample values transcribed from those screenshots. Review and replace the sample data before external use.
 - `end_date` is left blank at the project level because the reference showed "Not Applicable"; resource and milestone dates use the visible reference values.
+\n\n## Sample SQLite database\nThe project includes `instance/sow_demo.db` with demo project `DEMO-1001`, three resources and four milestones. Run `python seed_demo.py` to add this demo record to whichever database is configured by `DATABASE_URL`. The script skips insertion if `DEMO-1001` already exists.\n
