@@ -29,3 +29,18 @@ details.collapsible[open]>summary{margin-bottom:22px}
 @media(max-width:1000px){.workspace-layout{grid-template-columns:1fr;margin:20px auto}.section-nav{position:static;display:flex;flex-wrap:wrap;gap:3px;padding:12px}.nav-title{width:100%;padding-bottom:5px}.nav-link{flex:1 1 140px}.nav-note{display:none}}
 @media(max-width:600px){.workspace-layout{padding:0 12px}.nav-link{flex:1 1 120px}.section-heading{align-items:flex-start}.section-heading h3{font-size:15px}}
 @media print{.workspace-layout{display:block;max-width:none;margin:0;padding:0}.section-nav{display:none}}
+
+/* Rich-text editor */
+.rich-source-hidden{display:none!important}
+.rich-editor{background:#fff;border:1px solid #dfe2ec;border-radius:7px;overflow:hidden;font-weight:400}
+.rich-editor .ql-toolbar.ql-snow{border:0;border-bottom:1px solid #e7e8ef;background:#f8f7fb;padding:8px}
+.rich-editor .ql-container.ql-snow{border:0;font:400 13px/1.6 'DM Sans',Arial,sans-serif;min-height:105px}
+.rich-editor .ql-editor{min-height:105px;color:var(--ink)}
+.rich-editor .ql-editor.ql-blank::before{font-style:normal;color:#a0a4b2}
+.rich-output{font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.rich-output p{margin:0 0 8px;white-space:normal}
+.rich-output ul,.rich-output ol{padding-left:25px;margin:6px 0 10px}
+.rich-output blockquote{border-left:3px solid #8b7ac2;margin:8px 0;padding-left:12px;color:#5d5870}
+.rich-output h2,.rich-output h3{margin:12px 0 7px}
+.rich-output a{color:#51408a;text-decoration:underline}
+@media print{.rich-output{font-size:10px}}

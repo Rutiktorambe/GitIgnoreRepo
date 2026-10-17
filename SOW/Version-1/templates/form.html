@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SOW Project Workspace</title>
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
@@ -86,20 +88,20 @@
 
     <details class="panel collapsible" id="scope" open><summary class="section-heading"><span class="section-number">05</span><div><h3>Background &amp; scope</h3><p>Business context and delivery boundaries</p></div><span class="collapse-indicator">⌄</span></summary>
       <div class="stack">
-        <label>Executive summary<textarea name="executive_summary" rows="3">{{ data.executive_summary }}</textarea></label>
-        <label>Background<textarea name="background" rows="5">{{ data.background }}</textarea></label>
-        <label>In scope<textarea name="in_scope" rows="5">{{ data.in_scope }}</textarea><small>Use a new line for each item.</small></label>
-        <label>Out of scope<textarea name="out_of_scope" rows="3">{{ data.out_of_scope }}</textarea></label>
+        <label>Executive summary<textarea class="rich-text-source" id="executive_summary" name="executive_summary" rows="3">{{ data.executive_summary }}</textarea></label>
+        <label>Background<textarea class="rich-text-source" id="background" name="background" rows="5">{{ data.background }}</textarea></label>
+        <label>In scope<textarea class="rich-text-source" id="in_scope" name="in_scope" rows="5">{{ data.in_scope }}</textarea><small>Use a new line for each item.</small></label>
+        <label>Out of scope<textarea class="rich-text-source" id="out_of_scope" name="out_of_scope" rows="3">{{ data.out_of_scope }}</textarea></label>
       </div>
     </details>
 
     <details class="panel collapsible" id="risks" open><summary class="section-heading"><span class="section-number">06</span><div><h3>Risks, skills &amp; software</h3><p>Dependencies and delivery requirements</p></div><span class="collapse-indicator">⌄</span></summary>
       <div class="stack">
-        <label>Dependencies &amp; risks<textarea name="dependencies_risks" rows="5">{{ data.dependencies_risks }}</textarea></label>
-        <label>Required skills<textarea name="required_skills" rows="5">{{ data.required_skills }}</textarea></label>
-        <label>Software / versions required<textarea name="software_required" rows="3">{{ data.software_required }}</textarea></label>
-        <label>Other notes<textarea name="other_notes" rows="4">{{ data.other_notes }}</textarea></label>
-        <label>Declarations<textarea name="declarations" rows="4">{{ data.declarations }}</textarea></label>
+        <label>Dependencies &amp; risks<textarea class="rich-text-source" id="dependencies_risks" name="dependencies_risks" rows="5">{{ data.dependencies_risks }}</textarea></label>
+        <label>Required skills<textarea class="rich-text-source" id="required_skills" name="required_skills" rows="5">{{ data.required_skills }}</textarea></label>
+        <label>Software / versions required<textarea class="rich-text-source" id="software_required" name="software_required" rows="3">{{ data.software_required }}</textarea></label>
+        <label>Other notes<textarea class="rich-text-source" id="other_notes" name="other_notes" rows="4">{{ data.other_notes }}</textarea></label>
+        <label>Declarations<textarea class="rich-text-source" id="declarations" name="declarations" rows="4">{{ data.declarations }}</textarea></label>
       </div>
     </details>
     <div class="bottom-submit"><span>Submitting saves the record and opens the printable document.</span><button type="submit" class="btn btn-primary">Save SOW &amp; Print ↗</button></div>

@@ -61,3 +61,6 @@ The app now includes collapsible form sections, a sticky section navigator, bill
 - Reference screenshots contain personal/business details; this app is prefilled with sample values transcribed from those screenshots. Review and replace the sample data before external use.
 - `end_date` is left blank at the project level because the reference showed "Not Applicable"; resource and milestone dates use the visible reference values.
 \n\n## Sample SQLite database\nThe project includes `instance/sow_demo.db` with demo project `DEMO-1001`, three resources and four milestones. Run `python seed_demo.py` to add this demo record to whichever database is configured by `DATABASE_URL`. The script skips insertion if `DEMO-1001` already exists.\n
+
+## Rich text formatting
+Narrative text fields use a Quill rich-text toolbar for bold, italic, underline, headings, bullets/numbered lists, text color, alignment, links and block quotes. Formatted HTML is stored in the existing SQLAlchemy `Text` columns and loaded back into the editor when editing a record. The print view renders the saved formatting. Install the new `bleach` dependency with `pip install -r requirements.txt`; submitted HTML is sanitized server-side before being stored.

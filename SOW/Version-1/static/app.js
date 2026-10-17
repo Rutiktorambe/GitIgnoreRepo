@@ -34,3 +34,59 @@ document.addEventListener("DOMContentLoaded", () => {
     sections.forEach((section) => observer.observe(section));
   }
 });
+
+// Rich-text formatting for SOW narrative fields.
+// The original textarea remains the submitted field, so no backend form changes are needed.
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof Quill === "undefined") return;
+  const toolbarOptions = [
+    ["bold", "italic", "underline", "strike"],
+    [{ header: [2, 3, false] }],
+    [{ list: "ordered" }, { list: "bullet" }],
+    [{ indent: "-1" }, { indent: "+1" }],
+    [{ color: [] }, { background: [] }],
+    [{ align: [] }],
+    ["blockquote", "link"],
+    ["clean"]
+  ];
+
+  const editors = [];
+  document.querySelectorAll("textarea.rich-text-source").forEach((textarea) => {
+    const editorHost = document.createElement("div");
+    editorHost.className = "rich-editor";
+    textarea.insertAdjacentElement("afterend", editorHost);
+    const initialValue = textarea.value || "";
+    textarea.classList.add("rich-source-hidden");
+
+    const quill = new Quill(editorHost, {
+      theme: "snow",
+      modules: { toolbar: toolbarOptions },
+      placeholder: "Enter details… use the toolbar to format text."
+    });
+
+    // Existing database values may be plain text or previously saved HTML.
+    if (/<\/?(p|br|strong|em|u|ol|ul|li|h[1-6]|blockquote|span|a)\b/i.test(initialValue)) {
+      quill.clipboard.dangerouslyPasteHTML(initialValue);
+    } else {
+      quill.setText(initialValue);
+    }
+    editors.push({ textarea, quill });
+  });
+
+  const form = document.querySelector("#sow-form");
+  if (form) {
+    form.addEventListener("submit", () => {
+      editors.forEach(({ textarea, quill }) => {
+        textarea.value = quill.root.innerHTML;
+      });
+    });
+    // Reset restores initial values and refreshes editors on the next browser tick.
+    form.addEventListener("reset", () => {
+      window.setTimeout(() => {
+        editors.forEach(({ textarea, quill }) => {
+          quill.setText(textarea.defaultValue || "");
+        });
+      }, 0);
+    });
+  }
+});

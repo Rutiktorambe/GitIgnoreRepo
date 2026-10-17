@@ -2,7 +2,7 @@ import os
 import json
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-
+import bleach
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
@@ -197,6 +197,31 @@ def parse_decimal(value):
         return None
 
 
+RICH_TEXT_FIELDS = {
+    "executive_summary", "background", "in_scope", "out_of_scope",
+    "dependencies_risks", "required_skills", "software_required",
+    "other_notes", "declarations"
+}
+RICH_TEXT_TAGS = [
+    "p", "br", "strong", "b", "em", "i", "u", "s", "strike",
+    "ol", "ul", "li", "h2", "h3", "blockquote", "span", "a"
+]
+RICH_TEXT_ATTRIBUTES = {"a": ["href", "title", "target", "rel"], "span": ["style"]}
+RICH_TEXT_PROTOCOLS = ["http", "https", "mailto"]
+
+
+def clean_rich_text(value):
+    # Keep basic formatting while removing scripts, event handlers and unsafe links.
+    cleaned = bleach.clean(
+        value or "",
+        tags=RICH_TEXT_TAGS,
+        attributes=RICH_TEXT_ATTRIBUTES,
+        protocols=RICH_TEXT_PROTOCOLS,
+        strip=True
+    )
+    return bleach.linkifier.Linker().linkify(cleaned) if False else cleaned
+
+
 def get_form_data():
     data = DEFAULT_DATA.copy()
     data.update(request.form.to_dict())
@@ -238,15 +263,15 @@ def create_project():
         travel_currency=data.get("travel_currency"),
         travel_fx_rate=parse_decimal(data.get("travel_fx_rate")),
         travel_cost_fx=parse_decimal(data.get("travel_cost_fx")),
-        executive_summary=data.get("executive_summary"),
-        background=data.get("background"),
-        in_scope=data.get("in_scope"),
-        out_of_scope=data.get("out_of_scope"),
-        dependencies_risks=data.get("dependencies_risks"),
-        required_skills=data.get("required_skills"),
-        software_required=data.get("software_required"),
-        other_notes=data.get("other_notes"),
-        declarations=data.get("declarations"),
+        executive_summary=clean_rich_text(data.get("executive_summary")),
+        background=clean_rich_text(data.get("background")),
+        in_scope=clean_rich_text(data.get("in_scope")),
+        out_of_scope=clean_rich_text(data.get("out_of_scope")),
+        dependencies_risks=clean_rich_text(data.get("dependencies_risks")),
+        required_skills=clean_rich_text(data.get("required_skills")),
+        software_required=clean_rich_text(data.get("software_required")),
+        other_notes=clean_rich_text(data.get("other_notes")),
+        declarations=clean_rich_text(data.get("declarations")),
     )
 
     try:

@@ -20,10 +20,10 @@
   {% for m in project.milestones %}<tr><td>{{ m.milestone }}</td><td>{{ m.action_points }}</td><td>{{ m.start_date or '—' }}</td><td>{{ m.end_date or '—' }}</td><td>{{ m.description or '—' }}</td></tr>{% else %}<tr><td colspan="5">No milestones provided.</td></tr>{% endfor %}
   </tbody></table></section>
   <section class="doc-section"><h2>05 · Background &amp; scope</h2>
-    {% for title, value in [('Executive summary',project.executive_summary),('Background',project.background),('In scope',project.in_scope),('Out of scope',project.out_of_scope)] %}{% if value %}<div class="doc-copy"><h3>{{ title }}</h3><p>{{ value }}</p></div>{% endif %}{% endfor %}
+    {% for title, value in [('Executive summary',project.executive_summary),('Background',project.background),('In scope',project.in_scope),('Out of scope',project.out_of_scope)] %}{% if value %}<div class="doc-copy"><h3>{{ title }}</h3><div class="rich-output">{{ value|safe }}</div></div>{% endif %}{% endfor %}
   </section>
   <section class="doc-section"><h2>06 · Risks, skills &amp; requirements</h2>
-    {% for title, value in [('Dependencies & risks',project.dependencies_risks),('Required skills',project.required_skills),('Software / versions required',project.software_required),('Other notes',project.other_notes),('Declarations',project.declarations)] %}{% if value %}<div class="doc-copy"><h3>{{ title }}</h3><p>{{ value }}</p></div>{% endif %}{% endfor %}
+    {% for title, value in [('Dependencies & risks',project.dependencies_risks),('Required skills',project.required_skills),('Software / versions required',project.software_required),('Other notes',project.other_notes),('Declarations',project.declarations)] %}{% if value %}<div class="doc-copy"><h3>{{ title }}</h3><div class="rich-output">{{ value|safe }}</div></div>{% endif %}{% endfor %}
   </section>
   <footer class="doc-footer">Generated from SOW Project Workspace · Record #{{ project.id }} · Created {{ project.created_at.strftime('%d %b %Y %H:%M UTC') }}</footer>
 </main>
