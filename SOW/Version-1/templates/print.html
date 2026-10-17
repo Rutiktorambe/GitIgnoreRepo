@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ project.project_code }} - {{ project.project_name }} | SOW</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body class="print-body">
+<div class="print-toolbar no-print"><a class="btn btn-light" href="{{ url_for('index') }}">← Back to workspace</a><button class="btn btn-primary" onclick="window.print()">Print / Save as PDF ⤓</button></div>
+<main class="document">
+  <header class="doc-header"><div><div class="eyebrow">STATEMENT OF WORK</div><h1>{{ project.project_name }}</h1><p>{{ project.project_code }} · {{ project.region or 'Region not specified' }}</p></div><div class="doc-mark">SOW</div></header>
+  <section class="doc-section"><h2>01 · Project details</h2><div class="doc-grid">
+    {% for label, value in [('Project code',project.project_code),('Project name',project.project_name),('Project team',project.project_team),('Project type',project.project_type),('Start date',project.start_date),('End date',project.end_date),('No. of FTEs',project.fte_count),('Region',project.region),('Client name',project.client_name),('Business lead',project.business_lead),('Lead designation',project.business_lead_designation),('Lead email',project.business_lead_email),('Billing model',project.billing_model),('Change effective date',project.change_effective_date)] %}
+    <div class="doc-field"><span>{{ label }}</span><strong>{{ value or '—' }}</strong></div>{% endfor %}
+  </div></section>
+  <section class="doc-section"><h2>02 · Cost &amp; billing</h2><table class="doc-table"><thead><tr><th>Cost item</th><th>Basis</th><th>Amount (INR)</th><th>Currency</th><th>FX rate</th><th>Amount (FX)</th></tr></thead><tbody>
+    <tr><td>Project</td><td>Cost per month</td><td>{{ project.project_cost_inr or '—' }}</td><td>{{ project.billing_currency or '—' }}</td><td>{{ project.fx_rate or '—' }}</td><td>{{ project.project_cost_fx or '—' }}</td></tr>
+    <tr><td>Travel</td><td>As applicable</td><td>{{ project.travel_cost_inr or '—' }}</td><td>{{ project.travel_currency or '—' }}</td><td>{{ project.travel_fx_rate or '—' }}</td><td>{{ project.travel_cost_fx or '—' }}</td></tr>
+  </tbody></table><p class="muted">Already part of an agreed FTE arrangement: <strong>{{ project.already_agreed_fte or '—' }}</strong></p></section>
+  <section class="doc-section"><h2>03 · Resource plan</h2><table class="doc-table"><thead><tr><th>Name</th><th>Billing level</th><th>Allocation</th><th>Start date</th><th>End date</th><th>Role &amp; responsibilities</th></tr></thead><tbody>
+  {% for r in project.resources %}<tr><td>{{ r.name }}</td><td>{{ r.billing_level or '—' }}</td><td>{{ r.allocation_percent or 0 }}%</td><td>{{ r.start_date or '—' }}</td><td>{{ r.end_date or '—' }}</td><td>{{ r.responsibilities or '—' }}</td></tr>{% else %}<tr><td colspan="6">No resources provided.</td></tr>{% endfor %}
+  </tbody></table></section>
+  <section class="doc-section"><h2>04 · Milestones &amp; activities</h2><table class="doc-table"><thead><tr><th>Milestone</th><th>Action points</th><th>Start date</th><th>End date</th><th>Description</th></tr></thead><tbody>
+  {% for m in project.milestones %}<tr><td>{{ m.milestone }}</td><td>{{ m.action_points }}</td><td>{{ m.start_date or '—' }}</td><td>{{ m.end_date or '—' }}</td><td>{{ m.description or '—' }}</td></tr>{% else %}<tr><td colspan="5">No milestones provided.</td></tr>{% endfor %}
+  </tbody></table></section>
+  <section class="doc-section"><h2>05 · Background &amp; scope</h2>
+    {% for title, value in [('Executive summary',project.executive_summary),('Background',project.background),('In scope',project.in_scope),('Out of scope',project.out_of_scope)] %}{% if value %}<div class="doc-copy"><h3>{{ title }}</h3><p>{{ value }}</p></div>{% endif %}{% endfor %}
+  </section>
+  <section class="doc-section"><h2>06 · Risks, skills &amp; requirements</h2>
+    {% for title, value in [('Dependencies & risks',project.dependencies_risks),('Required skills',project.required_skills),('Software / versions required',project.software_required),('Other notes',project.other_notes),('Declarations',project.declarations)] %}{% if value %}<div class="doc-copy"><h3>{{ title }}</h3><p>{{ value }}</p></div>{% endif %}{% endfor %}
+  </section>
+  <footer class="doc-footer">Generated from SOW Project Workspace · Record #{{ project.id }} · Created {{ project.created_at.strftime('%d %b %Y %H:%M UTC') }}</footer>
+</main>
+</body></html>

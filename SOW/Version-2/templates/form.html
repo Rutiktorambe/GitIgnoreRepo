@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOW Project Workspace</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PROJECT OPERATIONS</div>
+        <h1>Statement of Work</h1>
+        <p>Project setup, resource planning and billing details</p>
+      </div>
+      <div class="top-actions">
+        <span class="status-dot"></span> Draft workspace
+      </div>
+    </header>
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}{% for
+      category, message in messages %}
+      <div class="alert">{{ message }}</div>
+      {% endfor %}{% endwith %}
+      <form
+        action="{{ url_for('create_project') }}"
+        method="post"
+        id="sow-form"
+      >
+        <div class="intro-row">
+          <div>
+            <h2>Create a SOW record</h2>
+            <p>
+              Review the prefilled sample values, make changes, then submit to
+              save and open a print-ready SOW.
+            </p>
+          </div>
+          <div class="form-actions">
+            <button type="reset" class="btn btn-light">Reset</button
+            ><button type="submit" class="btn btn-primary">
+              Save &amp; open print view ↗
+            </button>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="section-heading">
+            <span class="section-number">01</span>
+            <div>
+              <h3>Project details</h3>
+              <p>Ownership, dates and commercial setup</p>
+            </div>
+          </div>
+          <div class="grid">
+            <label
+              >Project code *<input
+                required
+                name="project_code"
+                value="{{ data.project_code }}"
+            /></label>
+            <label
+              >Project name *<input
+                required
+                name="project_name"
+                value="{{ data.project_name }}"
+            /></label>
+            <label
+              >Project team<input
+                name="project_team"
+                value="{{ data.project_team }}"
+            /></label>
+            <label
+              >Type of project<input
+                name="project_type"
+                value="{{ data.project_type }}"
+            /></label>
+            <label
+              >Project start date<input
+                type="date"
+                name="start_date"
+                value="{{ data.start_date }}"
+            /></label>
+            <label
+              >Project end date<input
+                type="date"
+                name="end_date"
+                value="{{ data.end_date }}"
+            /></label>
+            <label
+              >No. of FTEs<input
+                type="number"
+                step="0.01"
+                name="fte_count"
+                value="{{ data.fte_count }}"
+            /></label>
+            <label
+              >Region<input name="region" value="{{ data.region }}"
+            /></label>
+            <label
+              >Client name<input
+                name="client_name"
+                value="{{ data.client_name }}"
+            /></label>
+            <label
+              >Business lead<input
+                name="business_lead"
+                value="{{ data.business_lead }}"
+            /></label>
+            <label
+              >Business lead designation<input
+                name="business_lead_designation"
+                value="{{ data.business_lead_designation }}"
+            /></label>
+            <label
+              >Business lead email<input
+                type="email"
+                name="business_lead_email"
+                value="{{ data.business_lead_email }}"
+            /></label>
+            <label
+              >Billing model<input
+                name="billing_model"
+                value="{{ data.billing_model }}"
+            /></label>
+            <label
+              >Change effective date<input
+                type="date"
+                name="change_effective_date"
+                value="{{ data.change_effective_date }}"
+            /></label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <span class="section-number">02</span>
+            <div>
+              <h3>Cost &amp; billing</h3>
+              <p>Estimated project and travel costs</p>
+            </div>
+          </div>
+          <div class="grid">
+            <label
+              >Already part of agreed FTE arrangement?
+              <select name="already_agreed_fte">
+                <option
+                  {%
+                  if
+                  data.already_agreed_fte=""
+                  ="No"
+                  %}selected{%
+                  endif
+                  %}
+                >
+                  No
+                </option>
+                <option
+                  {%
+                  if
+                  data.already_agreed_fte=""
+                  ="Yes"
+                  %}selected{%
+                  endif
+                  %}
+                >
+                  Yes
+                </option>
+              </select>
+            </label>
+            <label
+              >Project cost (INR)<input
+                type="number"
+                step="0.01"
+                name="project_cost_inr"
+                value="{{ data.project_cost_inr }}"
+            /></label>
+            <label
+              >Billing currency<input
+                name="billing_currency"
+                value="{{ data.billing_currency }}"
+            /></label>
+            <label
+              >FX rate<input
+                type="number"
+                step="0.0001"
+                name="fx_rate"
+                value="{{ data.fx_rate }}"
+            /></label>
+            <label
+              >Project amount in FX<input
+                type="number"
+                step="0.01"
+                name="project_cost_fx"
+                value="{{ data.project_cost_fx }}"
+            /></label>
+            <label
+              >Travel cost (INR)<input
+                type="number"
+                step="0.01"
+                name="travel_cost_inr"
+                value="{{ data.travel_cost_inr }}"
+            /></label>
+            <label
+              >Travel currency<input
+                name="travel_currency"
+                value="{{ data.travel_currency }}"
+            /></label>
+            <label
+              >Travel FX rate<input
+                type="number"
+                step="0.0001"
+                name="travel_fx_rate"
+                value="{{ data.travel_fx_rate }}"
+            /></label>
+            <label
+              >Travel amount in FX<input
+                type="number"
+                step="0.01"
+                name="travel_cost_fx"
+                value="{{ data.travel_cost_fx }}"
+            /></label>
+          </div>
+          <p class="hint">
+            Amounts are estimates. Confirm the approved commercial values before
+            using this SOW externally.
+          </p>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <span class="section-number">03</span>
+            <div>
+              <h3>Resource plan</h3>
+              <p>Add team members, allocation and responsibilities</p>
+            </div>
+            <button type="button" class="btn btn-light push" id="add-resource">
+              + Add resource
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table id="resources-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Billing level</th>
+                  <th>Allocation %</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Role &amp; responsibilities</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in resources %}
+                <tr>
+                  <td>
+                    <input
+                      name="resource_name[]"
+                      value="{{ r[0] }}"
+                      aria-label="Resource name"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      name="resource_level[]"
+                      value="{{ r[1] }}"
+                      aria-label="Billing level"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      name="resource_allocation[]"
+                      value="{{ r[2] }}"
+                      aria-label="Allocation percent"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="date"
+                      name="resource_start[]"
+                      value="{{ r[3] }}"
+                      aria-label="Resource start"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="date"
+                      name="resource_end[]"
+                      value="{{ r[4] }}"
+                      aria-label="Resource end"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      name="resource_responsibilities[]"
+                      value="{{ r[5] }}"
+                      aria-label="Responsibilities"
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="remove-row"
+                      aria-label="Remove resource"
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <span class="section-number">04</span>
+            <div>
+              <h3>Milestones &amp; activities</h3>
+              <p>Planning, delivery activities and documentation</p>
+            </div>
+            <button type="button" class="btn btn-light push" id="add-milestone">
+              + Add milestone
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table id="milestones-table">
+              <thead>
+                <tr>
+                  <th>Milestone</th>
+                  <th>Action points</th>
+                  <th>Start date</th>
+                  <th>End date</th>
+                  <th>Description</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in milestones %}
+                <tr>
+                  <td>
+                    <input
+                      name="milestone_name[]"
+                      value="{{ m[0] }}"
+                      aria-label="Milestone"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      name="milestone_points[]"
+                      value="{{ m[1] }}"
+                      aria-label="Action points"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="date"
+                      name="milestone_start[]"
+                      value="{{ m[2] }}"
+                      aria-label="Milestone start"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="date"
+                      name="milestone_end[]"
+                      value="{{ m[3] }}"
+                      aria-label="Milestone end"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      name="milestone_description[]"
+                      value="{{ m[4] }}"
+                      aria-label="Description"
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="remove-row"
+                      aria-label="Remove milestone"
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <span class="section-number">05</span>
+            <div>
+              <h3>Background &amp; scope</h3>
+              <p>Business context and delivery boundaries</p>
+            </div>
+          </div>
+          <div class="stack">
+            <label
+              >Executive summary<textarea name="executive_summary" rows="3">
+{{ data.executive_summary }}</textarea
+              >
+            </label>
+            <label
+              >Background<textarea name="background" rows="5">
+{{ data.background }}</textarea
+              >
+            </label>
+            <label
+              >In scope<textarea name="in_scope" rows="5">
+{{ data.in_scope }}</textarea
+              ><small>Use a new line for each item.</small></label
+            >
+            <label
+              >Out of scope<textarea name="out_of_scope" rows="3">
+{{ data.out_of_scope }}</textarea
+              >
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <span class="section-number">06</span>
+            <div>
+              <h3>Risks, skills &amp; software</h3>
+              <p>Dependencies and delivery requirements</p>
+            </div>
+          </div>
+          <div class="stack">
+            <label
+              >Dependencies &amp; risks<textarea
+                name="dependencies_risks"
+                rows="5"
+              >
+{{ data.dependencies_risks }}</textarea
+              >
+            </label>
+            <label
+              >Required skills<textarea name="required_skills" rows="5">
+{{ data.required_skills }}</textarea
+              >
+            </label>
+            <label
+              >Software / versions required<textarea
+                name="software_required"
+                rows="3"
+              >
+{{ data.software_required }}</textarea
+              >
+            </label>
+            <label
+              >Other notes<textarea name="other_notes" rows="4">
+{{ data.other_notes }}</textarea
+              >
+            </label>
+            <label
+              >Declarations<textarea name="declarations" rows="4">
+{{ data.declarations }}</textarea
+              >
+            </label>
+          </div>
+        </section>
+        <div class="bottom-submit">
+          <span
+            >Submitting saves the record and opens the printable document.</span
+          ><button type="submit" class="btn btn-primary">
+            Save SOW &amp; Print ↗
+          </button>
+        </div>
+      </form>
+      <footer>
+        Internal SOW workspace · Demo data is prefilled from the reference
+        screenshots
+      </footer>
+    </main>
+    <template id="resource-row-template"
+      ><tr>
+        <td>
+          <input
+            name="resource_name[]"
+            aria-label="Resource name"
+            placeholder="Full name"
+          />
+        </td>
+        <td>
+          <input
+            name="resource_level[]"
+            aria-label="Billing level"
+            placeholder="Consultant"
+          />
+        </td>
+        <td>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            name="resource_allocation[]"
+            value="100"
+            aria-label="Allocation percent"
+          />
+        </td>
+        <td>
+          <input
+            type="date"
+            name="resource_start[]"
+            aria-label="Resource start"
+          />
+        </td>
+        <td>
+          <input type="date" name="resource_end[]" aria-label="Resource end" />
+        </td>
+        <td>
+          <input
+            name="resource_responsibilities[]"
+            aria-label="Responsibilities"
+            placeholder="Role and responsibilities"
+          />
+        </td>
+        <td>
+          <button type="button" class="remove-row" aria-label="Remove resource">
+            ×
+          </button>
+        </td>
+      </tr></template
+    >
+    <template id="milestone-row-template"
+      ><tr>
+        <td>
+          <input
+            name="milestone_name[]"
+            aria-label="Milestone"
+            placeholder="Milestone name"
+          />
+        </td>
+        <td>
+          <input
+            type="number"
+            min="0"
+            name="milestone_points[]"
+            value="1"
+            aria-label="Action points"
+          />
+        </td>
+        <td>
+          <input
+            type="date"
+            name="milestone_start[]"
+            aria-label="Milestone start"
+          />
+        </td>
+        <td>
+          <input
+            type="date"
+            name="milestone_end[]"
+            aria-label="Milestone end"
+          />
+        </td>
+        <td>
+          <input
+            name="milestone_description[]"
+            aria-label="Description"
+            placeholder="Description"
+          />
+        </td>
+        <td>
+          <button
+            type="button"
+            class="remove-row"
+            aria-label="Remove milestone"
+          >
+            ×
+          </button>
+        </td>
+      </tr></template
+    >
+  </body>
+</html>
