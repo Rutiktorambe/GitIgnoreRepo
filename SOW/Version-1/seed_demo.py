@@ -7,10 +7,10 @@ from datetime import date
 from dotenv import load_dotenv
 load_dotenv()
 
-from app import app, db, SowProject, SowResource, SowMilestone
+from app import app, db, SowProject, SowResource, SowMilestone, ensure_schema
 
 with app.app_context():
-    db.create_all()
+    ensure_schema()
     project = SowProject.query.filter_by(project_code="DEMO-1001").first()
     if project:
         print(f"Demo project already exists (id={project.id}); no changes made.")

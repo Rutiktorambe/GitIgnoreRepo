@@ -90,3 +90,65 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+
+// Final-save confirmation modal. Server-side validation is authoritative.
+document.addEventListener("DOMContentLoaded", () => {
+  const openButton = document.getElementById("open-save-confirm");
+  const modal = document.getElementById("save-confirm-modal");
+  if (!modal) return;
+
+  const form = modal.querySelector("#final-save-form");
+  const cancelButton = document.getElementById("cancel-save-confirm");
+  const version = modal.querySelector('input[name="sow_version"]');
+  const summary = modal.querySelector('textarea[name="change_summary"]');
+
+  const openModal = () => {
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+    (version || summary)?.focus();
+  };
+  const closeModal = () => {
+    modal.hidden = true;
+    document.body.classList.remove("modal-open");
+    openButton?.focus();
+  };
+
+  if (openButton) openButton.addEventListener("click", openModal);
+  cancelButton?.addEventListener("click", closeModal);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) closeModal();
+  });
+
+  form?.addEventListener("submit", (event) => {
+    const missing = !version?.value.trim() || !summary?.value.trim();
+    if (missing) {
+      event.preventDefault();
+      if (summary && !summary.value.trim()) {
+        summary.setCustomValidity("Please enter a change summary before saving.");
+        summary.reportValidity();
+        summary.focus();
+      } else if (version) {
+        version.setCustomValidity("Please enter an SOW version before saving.");
+        version.reportValidity();
+        version.focus();
+      }
+      return;
+    }
+    summary?.setCustomValidity("");
+    version?.setCustomValidity("");
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Generating PDF and saving…";
+    }
+  });
+  summary?.addEventListener("input", () => summary.setCustomValidity(""));
+  version?.addEventListener("input", () => version.setCustomValidity(""));
+
+  // When the server rejects an incomplete confirmation, keep the modal visible.
+  if (!modal.hidden) document.body.classList.add("modal-open");
+});

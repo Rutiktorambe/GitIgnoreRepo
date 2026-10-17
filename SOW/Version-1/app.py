@@ -72,6 +72,8 @@ class SowProject(db.Model):
     software_required = db.Column(db.Text)
     other_notes = db.Column(db.Text)
     declarations = db.Column(db.Text)
+    sow_version = db.Column(db.String(30), nullable=False, default="1.0")
+    change_summary = db.Column(db.Text)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -340,6 +342,8 @@ def _preview_object(draft):
         software_required=clean_rich_text(values.get("software_required", "")),
         other_notes=clean_rich_text(values.get("other_notes", "")),
         declarations=clean_rich_text(values.get("declarations", "")),
+        sow_version=values.get("sow_version", "1.0"),
+        change_summary=clean_rich_text(values.get("change_summary", "")),
         resources=resources, milestones=milestones
     )
 
@@ -420,7 +424,9 @@ def generate_project_pdf(project):
         ("Client name", project.client_name), ("Business lead", project.business_lead),
         ("Lead designation", project.business_lead_designation), ("Lead email", project.business_lead_email),
         ("Billing model", project.billing_model), ("Change effective date", project.change_effective_date),
+        ("SOW version", getattr(project, "sow_version", "1.0")),
     ])
+    add_rich_section("Change summary", getattr(project, "change_summary", ""))
     add_section("02 · Cost & billing", [
         ("Project cost (INR)", project.project_cost_inr), ("Billing currency", project.billing_currency),
         ("FX rate", project.fx_rate), ("Project amount (FX)", project.project_cost_fx),
@@ -497,14 +503,33 @@ def preview_project():
 
 @app.route("/projects", methods=["POST"])
 def create_project():
+    # The confirmation is a required server-side gate, not just browser validation.
+    # Nothing is added to the database until both fields pass validation.
     draft_token = session.get("sow_draft_token")
     draft = _draft_values()
-    if not draft:
-        # Support direct POSTs as a fallback, though the UI normally posts through Preview.
-        draft = request.form.to_dict(flat=False)
+    if not draft or not draft_token:
+        flash("Your preview has expired. Please review the SOW again before saving.", "error")
+        return redirect(url_for("index"))
+
     values = _draft_scalar_values(draft)
     data = DEFAULT_DATA.copy()
     data.update(values)
+
+    confirmation_summary = request.form.get("change_summary", "").strip()
+    confirmation_version = request.form.get("sow_version", "").strip()
+    confirmation_code = request.form.get("project_code_confirm", "").strip()
+    expected_code = (data.get("project_code") or "").strip()
+
+    if not confirmation_summary or not confirmation_version or confirmation_code != expected_code:
+        project = _preview_object(draft)
+        return render_template(
+            "print.html", project=project, preview_mode=True,
+            confirmation_error=(
+                "Enter a change summary and SOW version, and confirm the project code. "
+                "No database record or PDF has been created yet."
+            ),
+            modal_open=True,
+        ), 400
 
     project = SowProject(
         project_code=data.get("project_code", "").strip(),
@@ -539,6 +564,8 @@ def create_project():
         software_required=clean_rich_text(data.get("software_required")),
         other_notes=clean_rich_text(data.get("other_notes")),
         declarations=clean_rich_text(data.get("declarations")),
+        sow_version=confirmation_version,
+        change_summary=clean_rich_text(confirmation_summary),
     )
 
     try:
@@ -578,8 +605,20 @@ def create_project():
                 sort_order=i,
             ))
 
-        db.session.commit()
+        # Required order: validate confirmation -> stage DB objects -> generate PDF ->
+        # commit DB. If PDF generation fails, the transaction is rolled back and no SOW
+        # record is committed. If DB commit fails, remove the already-generated PDF.
         pdf_filename = generate_project_pdf(project)
+        pdf_path = os.path.join(app.instance_path, "generated_pdfs", pdf_filename)
+        try:
+            db.session.commit()
+        except Exception:
+            # Avoid leaving a PDF behind if the database commit fails.
+            try:
+                os.remove(pdf_path)
+            except FileNotFoundError:
+                pass
+            raise
         session.pop("sow_draft_token", None)
         if draft_token:
             draft_path = os.path.join(app.instance_path, "drafts", f"{draft_token}.json")
@@ -619,7 +658,34 @@ def health():
     return {"status": "ok"}
 
 
+def ensure_schema():
+    """Create missing tables and add new nullable columns to existing demo databases."""
+    db.create_all()
+    inspector = db.inspect(db.engine)
+    if "sow_resources" in inspector.get_table_names():
+        existing = {column["name"] for column in inspector.get_columns("sow_resources")}
+        if "team" not in existing:
+            with db.engine.begin() as conn:
+                conn.execute(text("ALTER TABLE sow_resources ADD COLUMN team VARCHAR(100) NULL"))
+    if "sow_projects" in inspector.get_table_names():
+        existing = {column["name"] for column in inspector.get_columns("sow_projects")}
+        dialect = db.engine.dialect.name
+        for column_name, column_sql in [
+            ("sow_version", "VARCHAR(30) NOT NULL DEFAULT '1.0'"),
+            ("change_summary", "TEXT NULL"),
+        ]:
+            if column_name not in existing:
+                with db.engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE sow_projects ADD COLUMN {column_name} {column_sql}"))
+
+
+@app.before_request
+def initialize_schema_for_demo():
+    # Keeps older local SQLite databases usable after adding fields to the model.
+    ensure_schema()
+
+
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
+        ensure_schema()
     app.run(debug=os.getenv("FLASK_DEBUG", "1") == "1")

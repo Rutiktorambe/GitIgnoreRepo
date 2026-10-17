@@ -68,3 +68,10 @@ Narrative text fields use a Quill rich-text toolbar for bold, italic, underline,
 
 ## Preview → Save → automatic PDF
 The main form posts to `/preview` and does not write to the database yet. A temporary draft is kept server-side (rather than inside the browser cookie). The preview uses the print document layout. Choose **Save SOW & Generate PDF** to persist the project/resource/milestone rows and automatically create a PDF under `instance/generated_pdfs/`. The saved record's print page includes a **Download saved PDF** link. PDF generation uses ReportLab; install it with `pip install -r requirements.txt`.
+
+
+## Demo SQLite database
+This package includes `instance/sow_demo.db`, a seeded SQLite database containing a clearly-labelled demo project (`DEMO-1001`), two resources, and two milestones. The default app URI `sqlite:///sow_demo.db` uses this file. If you have an older local SQLite database, startup now adds the missing `team`, `sow_version`, and `change_summary` columns where needed. Back up any database before making schema changes.
+
+## Final submission confirmation
+After preview, click **Save SOW & Generate PDF** to open a confirmation popup. The popup shows the project code, asks for a SOW version (default `1.0`), and requires a change summary. Confirming saves the version and change summary in `sow_projects`, generates the PDF automatically, and includes the version/change summary in the generated document.
