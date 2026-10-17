@@ -43,3 +43,10 @@ Narrative fields use Quill rich-text editing. HTML is sanitized server-side befo
 
 ## Production considerations
 Add authentication/authorization, CSRF protection, database migrations, stronger validation, and audit logging before deploying with real client or employee data.
+
+
+## Rich-text editor dependencies
+
+- The SOW narrative editor uses a lightweight browser-native `contenteditable` editor and toolbar.
+- No Quill CDN stylesheet or JavaScript is loaded, and the editor does not require an external network connection.
+- Formatting controls include bold, italic, underline, headings, ordered/bulleted lists, block quotes, and clear formatting.
