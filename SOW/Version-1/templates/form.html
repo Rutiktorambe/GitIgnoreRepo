@@ -11,7 +11,7 @@
 </head>
 <body>
 <header class="topbar">
-  <div><div class="eyebrow">PROJECT OPERATIONS</div><h1>Statement of Work</h1><p>Project setup, resource planning and billing details</p></div>
+  <div><div class="eyebrow">PROJECT OPERATIONS</div><h1>{{ "Edit Statement of Work" if editing_project else "Statement of Work" }}</h1><p>Project setup, resource planning and billing details</p></div>
   <div class="top-actions"><span class="status-dot"></span> Draft workspace</div>
 </header>
 <div class="workspace-layout">
@@ -30,7 +30,9 @@
     <div class="alert">{{ message }}</div>
   {% endfor %}{% endwith %}
   <form action="{{ url_for('preview_project') }}" method="post" id="sow-form">
-    <div class="intro-row"><div><h2>Create a SOW record</h2><p>Review the values, then preview the print-ready SOW before saving.</p></div><div class="form-actions"><button type="reset" class="btn btn-light">Reset</button><button type="submit" class="btn btn-primary">Preview &amp; Next →</button></div></div>
+    <input type="hidden" name="edit_project_id" value="{{ edit_project_id|default('') }}">
+    <input type="hidden" name="sow_version" value="{{ editing_project.sow_version if editing_project else '' }}">
+    <div class="intro-row"><div><h2>{{ "Update SOW record" if editing_project else "Create a SOW record" }}</h2><p>Review the values, then preview the print-ready SOW before saving.</p></div><div class="form-actions"><button type="reset" class="btn btn-light">Reset</button><button type="submit" class="btn btn-primary">Preview &amp; Next →</button></div></div>
 
     <details class="panel collapsible" id="project-details" open><summary class="section-heading"><span class="section-number">01</span><div><h3>Project details</h3><p>Ownership, dates and commercial setup</p></div><span class="collapse-indicator">⌄</span></summary>
       <div class="grid">
@@ -54,7 +56,7 @@
     <details class="panel collapsible" id="cost-billing" open><summary class="section-heading"><span class="section-number">02</span><div><h3>Cost &amp; billing</h3><p>Estimated project and travel costs</p></div><span class="collapse-indicator">⌄</span></summary>
       <div class="grid">
         <label>Already part of agreed FTE arrangement?
-          <select name="already_agreed_fte"><option {% if data.already_agreed_fte == 'No' %}selected{% endif %}>No</option><option {% if data.already_agreed_fte == 'Yes' %}selected{% endif %}>Yes</option></select>
+          <select name="already_agreed_fte"><option value="">Select value</option>{% for choice in agreed_fte_choices %}<option value="{{ choice }}" {% if data.already_agreed_fte == choice %}selected{% endif %}>{{ choice }}</option>{% endfor %}</select>
         </label>
         <label>Project cost (INR)<input type="number" step="0.01" name="project_cost_inr" value="{{ data.project_cost_inr }}"></label>
         <label>Billing currency<input name="billing_currency" value="{{ data.billing_currency }}"></label>
@@ -72,7 +74,7 @@
       <div class="section-tools"><button type="button" class="btn btn-light" id="add-resource">+ Add resource</button></div>
       <div class="table-wrap"><table id="resources-table"><thead><tr><th>Name</th><th>Billing level</th><th>Team</th><th>Allocation %</th><th>Start</th><th>End</th><th>Role &amp; responsibilities</th><th></th></tr></thead><tbody>
       {% for r in resources %}<tr>
-        <td><input name="resource_name[]" value="{{ r[0] }}" aria-label="Resource name"></td><td><select name="resource_level[]" aria-label="Billing level"><option value="">Select level</option>{% for level in ['Consultant','Head','Manager','Senior Consultant','Analyst'] %}<option value="{{ level }}" {% if r[1] == level %}selected{% endif %}>{{ level }}</option>{% endfor %}</select></td><td><select name="resource_team[]" aria-label="Team"><option value="">Select team</option>{% for team in ['PVLR','RADAR','Risk Modeling','Data Mart','Pricing','Transformation','Other'] %}<option value="{{ team }}" {% if r[6]|default('') == team %}selected{% endif %}>{{ team }}</option>{% endfor %}</select></td><td><input type="number" min="0" max="100" step="0.01" name="resource_allocation[]" value="{{ r[2] }}" aria-label="Allocation percent"></td><td><input type="date" name="resource_start[]" value="{{ r[3] }}" aria-label="Resource start"></td><td><input type="date" name="resource_end[]" value="{{ r[4] }}" aria-label="Resource end"></td><td><input name="resource_responsibilities[]" value="{{ r[5] }}" aria-label="Responsibilities"></td><td><button type="button" class="remove-row" aria-label="Remove resource">×</button></td>
+        <td><input name="resource_name[]" value="{{ r[0] }}" aria-label="Resource name"></td><td><select name="resource_level[]" aria-label="Billing level"><option value="">Select level</option>{% for level in billing_levels %}<option value="{{ level }}" {% if r[1] == level %}selected{% endif %}>{{ level }}</option>{% endfor %}</select></td><td><select name="resource_team[]" aria-label="Team"><option value="">Select team</option>{% for team in resource_teams %}<option value="{{ team }}" {% if r[6]|default('') == team %}selected{% endif %}>{{ team }}</option>{% endfor %}</select></td><td><input type="number" min="0" max="100" step="0.01" name="resource_allocation[]" value="{{ r[2] }}" aria-label="Allocation percent"></td><td><input type="date" name="resource_start[]" value="{{ r[3] }}" aria-label="Resource start"></td><td><input type="date" name="resource_end[]" value="{{ r[4] }}" aria-label="Resource end"></td><td><input name="resource_responsibilities[]" value="{{ r[5] }}" aria-label="Responsibilities"></td><td><button type="button" class="remove-row" aria-label="Remove resource">×</button></td>
       </tr>{% endfor %}
       </tbody></table></div>
     </details>
@@ -106,14 +108,14 @@
     </details>
     <div class="bottom-submit"><span>Preview first. The final Save step stores the record and automatically generates a PDF.</span><button type="submit" class="btn btn-primary">Preview SOW &amp; Next →</button></div>
   </form>
-  <footer>Internal SOW workspace · Demo data is prefilled from the reference screenshots</footer>
+  <footer>Internal SOW workspace · Values and selectable options are loaded from the configured SQL database</footer>
 </main>
 </div>
 <template id="resource-row-template"><tr>
-  <td><input name="resource_name[]" aria-label="Resource name" placeholder="Full name"></td><td><select name="resource_level[]" aria-label="Billing level"><option value="">Select level</option><option>Consultant</option><option>Head</option><option>Manager</option><option>Senior Consultant</option><option>Analyst</option></select></td><td><select name="resource_team[]" aria-label="Team"><option value="">Select team</option><option>PVLR</option><option>RADAR</option><option>Risk Modeling</option><option>Data Mart</option><option>Pricing</option><option>Transformation</option><option>Other</option></select></td><td><input type="number" min="0" max="100" step="0.01" name="resource_allocation[]" value="100" aria-label="Allocation percent"></td><td><input type="date" name="resource_start[]" aria-label="Resource start"></td><td><input type="date" name="resource_end[]" aria-label="Resource end"></td><td><input name="resource_responsibilities[]" aria-label="Responsibilities" placeholder="Role and responsibilities"></td><td><button type="button" class="remove-row" aria-label="Remove resource">×</button></td>
+  <td><input name="resource_name[]" aria-label="Resource name" placeholder="Full name"></td><td><select name="resource_level[]" aria-label="Billing level"><option value="">Select level</option>{% for level in billing_levels %}<option value="{{ level }}">{{ level }}</option>{% endfor %}</select></td><td><select name="resource_team[]" aria-label="Team"><option value="">Select team</option>{% for team in resource_teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select></td><td><input type="number" min="0" max="100" step="0.01" name="resource_allocation[]" aria-label="Allocation percent"></td><td><input type="date" name="resource_start[]" aria-label="Resource start"></td><td><input type="date" name="resource_end[]" aria-label="Resource end"></td><td><input name="resource_responsibilities[]" aria-label="Responsibilities" placeholder="Role and responsibilities"></td><td><button type="button" class="remove-row" aria-label="Remove resource">×</button></td>
 </tr></template>
 <template id="milestone-row-template"><tr>
-  <td><input name="milestone_name[]" aria-label="Milestone" placeholder="Milestone name"></td><td><input type="number" min="0" name="milestone_points[]" value="1" aria-label="Action points"></td><td><input type="date" name="milestone_start[]" aria-label="Milestone start"></td><td><input type="date" name="milestone_end[]" aria-label="Milestone end"></td><td><input name="milestone_description[]" aria-label="Description" placeholder="Description"></td><td><button type="button" class="remove-row" aria-label="Remove milestone">×</button></td>
+  <td><input name="milestone_name[]" aria-label="Milestone" placeholder="Milestone name"></td><td><input type="number" min="0" name="milestone_points[]" aria-label="Action points"></td><td><input type="date" name="milestone_start[]" aria-label="Milestone start"></td><td><input type="date" name="milestone_end[]" aria-label="Milestone end"></td><td><input name="milestone_description[]" aria-label="Description" placeholder="Description"></td><td><button type="button" class="remove-row" aria-label="Remove milestone">×</button></td>
 </tr></template>
 </body>
 </html>

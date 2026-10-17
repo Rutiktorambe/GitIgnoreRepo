@@ -26,9 +26,10 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-this-development-secret")
 
 # Configure SQL Server with DATABASE_URL in .env. Example is in .env.example.
-# SQLite is used for a quick local demo when DATABASE_URL is not configured.
+# Use the configured SQL database. If no DATABASE_URL is supplied, use an empty local SQLite database.
+# No sample SOWs, resources, or milestones are inserted automatically.
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-    "DATABASE_URL", "sqlite:///sow_demo.db"
+    "DATABASE_URL", "sqlite:///sow.db"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
@@ -115,83 +116,40 @@ class SowMilestone(db.Model):
     sort_order = db.Column(db.Integer, default=0)
 
 
-DEFAULT_DATA = {
-    "project_code": "P0681",
-    "project_name": "U&P BAU Change",
-    "project_team": "Analytics",
-    "project_type": "Continuous support",
-    "start_date": "2025-01-01",
+EMPTY_DATA = {
+    "project_code": "",
+    "project_name": "",
+    "project_team": "",
+    "project_type": "",
+    "start_date": "",
     "end_date": "",
-    "fte_count": "27.25",
-    "region": "UK&I",
+    "fte_count": "",
+    "region": "",
     "client_name": "",
-    "business_lead": "Andrew Hall",
-    "business_lead_designation": "Technical Delivery Lead",
+    "business_lead": "",
+    "business_lead_designation": "",
     "business_lead_email": "",
-    "billing_model": "Fixed - FTE",
-    "change_effective_date": "2026-10-01",
-    "already_agreed_fte": "No",
-    "project_cost_inr": "9778651.49",
-    "billing_currency": "GBP",
-    "fx_rate": "120",
-    "project_cost_fx": "81488.76",
-    "travel_cost_inr": "0",
-    "travel_currency": "NA",
-    "travel_fx_rate": "0",
-    "travel_cost_fx": "0",
-    "executive_summary": "Intact India resources support PVLR build and maintenance, RADAR base and live models, Risk Modeling, and other programme objectives as required.",
-    "background": "Pricing View of Loss Ratio (PVLR) was added as a workstream in 2022 to create an efficient process for pricing views where unavailable and enable comparisons across portfolios. RADAR is a strategic rating tool for UK CL and EU. The India team supports RADAR development, maintenance and price-accuracy testing, and provides resources and technical guidance for the Keystone model.",
-    "in_scope": "PVLR build and maintenance\\nRADAR re-scorer build\\nRADAR Live build and maintenance\\nRADAR Live price testing and test-case generation\\nSupport Keystone model building within Risk Modeling\\nSupport other Pricing Sophistication projects",
+    "billing_model": "",
+    "change_effective_date": "",
+    "already_agreed_fte": "",
+    "project_cost_inr": "",
+    "billing_currency": "",
+    "fx_rate": "",
+    "project_cost_fx": "",
+    "travel_cost_inr": "",
+    "travel_currency": "",
+    "travel_fx_rate": "",
+    "travel_cost_fx": "",
+    "executive_summary": "",
+    "background": "",
+    "in_scope": "",
     "out_of_scope": "",
-    "dependencies_risks": "Dependencies: Pricing consultants and portfolio leads provide subject-matter and KPI inputs. Teams collaborate to define PVLR and rescoring requirements and validate data-mart data. Business queries should be resolved promptly.\\nRisks: Client data transfers must comply with applicable data-protection laws. Share only necessary personal data, pseudonymise/anonymise where applicable, use secure transfer methods, and report suspected incidents immediately.",
-    "required_skills": "People skills for stakeholder meetings and KPI agreement\\nInsurance KPIs: top-line, conversion, WLR, RMI indices and rating strength\\nSAS/WPS coding and data handling\\nRADAR model build and monitoring\\nTranslate business requirements into tasks\\nMicrosoft Excel, VBA, pricing flows and claims development",
-    "software_required": "SAS\\nExcel\\nRADAR\\nTeams\\nSharePoint\\nCQE\\nMicrosoft Office 365",
-    "other_notes": "Project billed on a full-time employee basis. Monthly feedback meeting between project manager and business lead. Two months' written notice is required for service termination. Actual invoice is in INR; GBP values may vary with FX movement.",
-    "declarations": "1. Responsibility for compliance with local data-protection rules and regulations lies with the local businesses as mentioned in the Technical Service Level Agreements.\\n2. Intact India retains relevant files for up to 2 years. The business should arrange longer retention if required."
+    "dependencies_risks": "",
+    "required_skills": "",
+    "software_required": "",
+    "other_notes": "",
+    "declarations": "",
 }
-
-DEFAULT_RESOURCES = [
-    ("Aashi Gupta","Consultant",100,"2025-01-01","2026-12-31","PVLR build and maintenance"),
-    ("Apoorva Srivastava","Consultant",100,"2025-01-01","2026-12-31","Data mart testing and building support"),
-    ("Bhoomi Agrawal","Consultant",100,"2025-01-01","2026-12-31","Data mart testing and building support"),
-    ("Debarshi Datta","Head",50,"2025-01-01","2026-12-31","Data mart testing and building support"),
-    ("Diksha Kapoor","Consultant",100,"2025-01-01","2026-12-31","RADAR re-scorer build"),
-    ("Divya Singh","Consultant",100,"2025-01-01","2026-12-31","Data mart testing and building support"),
-    ("Gavika Taneja","Consultant",100,"2025-01-01","2026-12-31","PVLR build and maintenance"),
-    ("Hansika Singh","Head",75,"2025-01-01","2026-12-31","PVLR build and maintenance"),
-    ("Manit Gupta","Consultant",100,"2025-01-01","2026-12-31","PVLR build and maintenance"),
-    ("Richa Upadhyay","Manager",100,"2025-01-01","2026-12-31","RADAR emulator"),
-    ("Srishti Grover","Consultant",100,"2025-01-01","2026-12-31","PVLR build and maintenance"),
-    ("Vaibhav Sharma","Consultant",100,"2025-01-01","2026-12-31","Data mart testing and building support"),
-    ("Itika Singal","Consultant",100,"2025-04-01","2026-12-31","Risk Modeling"),
-    ("M Madhumitha","Consultant",100,"2025-04-01","2026-12-31","RADAR Emulator"),
-    ("Torambe Rutik Jayram","Analyst",100,"2025-08-01","2026-12-31","Price Testing"),
-    ("Sumit Taneja","Analyst",100,"2025-08-15","2026-12-31","Price Testing"),
-    ("Harshit Chhatwala","Analyst",100,"2025-09-01","2026-12-31","PVLR build and maintenance"),
-    ("Rudraksha Khatri","Senior Consultant",100,"2025-09-01","2026-12-31","Price Testing"),
-    ("Vanshika Kapoor","Analyst",100,"2025-09-01","2026-12-31","PVLR build and maintenance"),
-    ("Unnati Sharma","",100,"2025-11-07","2026-12-31","RADAR Emulator"),
-    ("Sushant Makkar","",100,"2025-12-17","2026-12-31","PVLR Lead"),
-    ("Bhavya Choudhary","Consultant",100,"2026-04-01","2026-12-31","Transformation"),
-    ("Cherry Chhabra","Consultant",100,"2026-04-01","2026-12-31","1C Motor"),
-    ("Shivam Khurana","Senior Consultant",100,"2026-07-01","2026-12-31","RADAR Dev"),
-    ("Govind Swami","Analyst",100,"2026-09-01","2026-12-31","RADAR Emulator"),
-    ("Komalpreet Kaur","Analyst",100,"2026-09-01","2026-12-31","RADAR Emulator"),
-    ("Taran Gaur","Analyst",100,"2026-09-01","2026-12-31","Transformation"),
-    ("Varun Valecha","Analyst",100,"2026-09-01","2026-12-31","RADAR Emulator"),
-    ("Divye Kalra","Analyst",100,"2026-10-01","2026-12-31","RADAR Resource"),
-    ("Riddhi Rupda","Analyst",100,"2026-10-01","2026-12-31","RADAR Resource"),
-]
-DEFAULT_MILESTONES = [
-    ("Planning",1,"2025-01-01","2026-12-31","SOW and monthly calls"),
-    ("Project Training",1,"2025-01-01","2026-12-31","Portfolio training, RADAR and SAS"),
-    ("Data",1,"2025-01-01","2026-12-31","Data build for Quotes/Policy/Claims as required"),
-    ("Analysis",1,"2025-01-01","2026-12-31","Data analysis and other ad-hoc work"),
-    ("Meeting",1,"2025-01-01","2026-12-31","Regular calls with business lead, BA and stakeholders"),
-    ("Peer Review",0,"2025-01-01","2026-12-31","No peer review from IA"),
-    ("Report & Documentation",1,"2025-01-01","2026-12-31","Emails and dashboard documentation"),
-]
-
 
 def parse_date(value):
     if not value:
@@ -209,6 +167,31 @@ def parse_decimal(value):
         return Decimal(str(value).replace(",", "").strip())
     except InvalidOperation:
         return None
+
+
+
+def database_choices(model, column_name):
+    """Return distinct non-empty values already stored in the configured SQL database."""
+    column = getattr(model, column_name)
+    rows = (db.session.query(column)
+            .filter(column.isnot(None), column != "")
+            .distinct()
+            .order_by(column)
+            .all())
+    return [row[0] for row in rows if row[0] is not None and str(row[0]).strip()]
+
+
+def form_context(data=None, resources=None, milestones=None, edit_project_id="", editing_project=None):
+    return {
+        "data": data if data is not None else EMPTY_DATA.copy(),
+        "resources": resources if resources is not None else [],
+        "milestones": milestones if milestones is not None else [],
+        "edit_project_id": edit_project_id,
+        "editing_project": editing_project,
+        "billing_levels": database_choices(SowResource, "billing_level"),
+        "resource_teams": database_choices(SowResource, "team"),
+        "agreed_fte_choices": database_choices(SowProject, "already_agreed_fte"),
+    }
 
 
 RICH_TEXT_FIELDS = {
@@ -236,19 +219,40 @@ def clean_rich_text(value):
     return bleach.linkifier.Linker().linkify(cleaned) if False else cleaned
 
 
-def get_form_data():
-    data = DEFAULT_DATA.copy()
-    data.update(request.form.to_dict())
-    return data
 
 
 @app.route("/")
 def index():
-    # Start a new form with the sample data. The browser back button can return from preview.
-    return render_template(
-        "form.html", data=DEFAULT_DATA, resources=DEFAULT_RESOURCES,
-        milestones=DEFAULT_MILESTONES
-    )
+    return render_template("form.html", **form_context())
+
+
+@app.route("/sows")
+def list_projects():
+    projects = SowProject.query.order_by(SowProject.created_at.desc(), SowProject.id.desc()).all()
+    return render_template("sows.html", projects=projects)
+
+
+@app.route("/projects/<int:project_id>/edit")
+def edit_project(project_id):
+    saved = db.get_or_404(SowProject, project_id)
+    data = {}
+    for key in EMPTY_DATA:
+        value = getattr(saved, key, None)
+        if isinstance(value, (date, datetime)):
+            value = value.strftime("%Y-%m-%d")
+        data[key] = "" if value is None else str(value)
+    resources = [(r.name, r.billing_level or "", str(r.allocation_percent if r.allocation_percent is not None else 100),
+                  r.start_date.strftime("%Y-%m-%d") if r.start_date else "",
+                  r.end_date.strftime("%Y-%m-%d") if r.end_date else "", r.responsibilities or "", r.team or "")
+                 for r in saved.resources]
+    milestones = [(m.milestone, str(m.action_points if m.action_points is not None else 1),
+                   m.start_date.strftime("%Y-%m-%d") if m.start_date else "",
+                   m.end_date.strftime("%Y-%m-%d") if m.end_date else "", m.description or "")
+                  for m in saved.milestones]
+    return render_template("form.html", **form_context(
+        data=data, resources=resources, milestones=milestones,
+        edit_project_id=saved.id, editing_project=saved
+    ))
 
 
 
@@ -274,7 +278,7 @@ def _draft_scalar_values(draft):
 
 def _preview_object(draft):
     values = _draft_scalar_values(draft)
-    data = DEFAULT_DATA.copy()
+    data = EMPTY_DATA.copy()
     data.update(values)
 
     def val(name, index, default=""):
@@ -342,7 +346,7 @@ def _preview_object(draft):
         software_required=clean_rich_text(values.get("software_required", "")),
         other_notes=clean_rich_text(values.get("other_notes", "")),
         declarations=clean_rich_text(values.get("declarations", "")),
-        sow_version=values.get("sow_version", "1.0"),
+        sow_version=values.get("sow_version", ""),
         change_summary=clean_rich_text(values.get("change_summary", "")),
         resources=resources, milestones=milestones
     )
@@ -512,7 +516,7 @@ def create_project():
         return redirect(url_for("index"))
 
     values = _draft_scalar_values(draft)
-    data = DEFAULT_DATA.copy()
+    data = EMPTY_DATA.copy()
     data.update(values)
 
     confirmation_summary = request.form.get("change_summary", "").strip()
@@ -531,42 +535,46 @@ def create_project():
             modal_open=True,
         ), 400
 
-    project = SowProject(
-        project_code=data.get("project_code", "").strip(),
-        project_name=data.get("project_name", "").strip(),
-        project_team=data.get("project_team"),
-        project_type=data.get("project_type"),
-        start_date=parse_date(data.get("start_date")),
-        end_date=parse_date(data.get("end_date")),
-        fte_count=parse_decimal(data.get("fte_count")),
-        region=data.get("region"),
-        client_name=data.get("client_name"),
-        business_lead=data.get("business_lead"),
-        business_lead_designation=data.get("business_lead_designation"),
-        business_lead_email=data.get("business_lead_email"),
-        billing_model=data.get("billing_model"),
-        change_effective_date=parse_date(data.get("change_effective_date")),
-        already_agreed_fte=data.get("already_agreed_fte"),
-        project_cost_inr=parse_decimal(data.get("project_cost_inr")),
-        billing_currency=data.get("billing_currency"),
-        fx_rate=parse_decimal(data.get("fx_rate")),
-        project_cost_fx=parse_decimal(data.get("project_cost_fx")),
-        travel_cost_inr=parse_decimal(data.get("travel_cost_inr")),
-        travel_currency=data.get("travel_currency"),
-        travel_fx_rate=parse_decimal(data.get("travel_fx_rate")),
-        travel_cost_fx=parse_decimal(data.get("travel_cost_fx")),
-        executive_summary=clean_rich_text(data.get("executive_summary")),
-        background=clean_rich_text(data.get("background")),
-        in_scope=clean_rich_text(data.get("in_scope")),
-        out_of_scope=clean_rich_text(data.get("out_of_scope")),
-        dependencies_risks=clean_rich_text(data.get("dependencies_risks")),
-        required_skills=clean_rich_text(data.get("required_skills")),
-        software_required=clean_rich_text(data.get("software_required")),
-        other_notes=clean_rich_text(data.get("other_notes")),
-        declarations=clean_rich_text(data.get("declarations")),
-        sow_version=confirmation_version,
-        change_summary=clean_rich_text(confirmation_summary),
-    )
+    edit_project_id = (data.get("edit_project_id") or "").strip()
+    existing_project = db.get_or_404(SowProject, int(edit_project_id)) if edit_project_id else None
+    project = existing_project or SowProject()
+    project.project_code = data.get("project_code", "").strip()
+    project.project_name = data.get("project_name", "").strip()
+    project.project_team = data.get("project_team")
+    project.project_type = data.get("project_type")
+    project.start_date = parse_date(data.get("start_date"))
+    project.end_date = parse_date(data.get("end_date"))
+    project.fte_count = parse_decimal(data.get("fte_count"))
+    project.region = data.get("region")
+    project.client_name = data.get("client_name")
+    project.business_lead = data.get("business_lead")
+    project.business_lead_designation = data.get("business_lead_designation")
+    project.business_lead_email = data.get("business_lead_email")
+    project.billing_model = data.get("billing_model")
+    project.change_effective_date = parse_date(data.get("change_effective_date"))
+    project.already_agreed_fte = data.get("already_agreed_fte")
+    project.project_cost_inr = parse_decimal(data.get("project_cost_inr"))
+    project.billing_currency = data.get("billing_currency")
+    project.fx_rate = parse_decimal(data.get("fx_rate"))
+    project.project_cost_fx = parse_decimal(data.get("project_cost_fx"))
+    project.travel_cost_inr = parse_decimal(data.get("travel_cost_inr"))
+    project.travel_currency = data.get("travel_currency")
+    project.travel_fx_rate = parse_decimal(data.get("travel_fx_rate"))
+    project.travel_cost_fx = parse_decimal(data.get("travel_cost_fx"))
+    project.executive_summary = clean_rich_text(data.get("executive_summary"))
+    project.background = clean_rich_text(data.get("background"))
+    project.in_scope = clean_rich_text(data.get("in_scope"))
+    project.out_of_scope = clean_rich_text(data.get("out_of_scope"))
+    project.dependencies_risks = clean_rich_text(data.get("dependencies_risks"))
+    project.required_skills = clean_rich_text(data.get("required_skills"))
+    project.software_required = clean_rich_text(data.get("software_required"))
+    project.other_notes = clean_rich_text(data.get("other_notes"))
+    project.declarations = clean_rich_text(data.get("declarations"))
+    project.sow_version = confirmation_version
+    project.change_summary = clean_rich_text(confirmation_summary)
+    if existing_project is not None:
+        existing_project.resources.clear()
+        existing_project.milestones.clear()
 
     try:
         db.session.add(project)
@@ -605,19 +613,27 @@ def create_project():
                 sort_order=i,
             ))
 
-        # Required order: validate confirmation -> stage DB objects -> generate PDF ->
-        # commit DB. If PDF generation fails, the transaction is rolled back and no SOW
-        # record is committed. If DB commit fails, remove the already-generated PDF.
+        # Generate PDF before DB commit. Restore the old PDF if an update cannot commit.
+        pdf_dir = os.path.join(app.instance_path, "generated_pdfs")
+        os.makedirs(pdf_dir, exist_ok=True)
+        previous_pdf_path = os.path.join(pdf_dir, f"{re.sub(r'[^A-Za-z0-9_-]+', '_', project.project_code or 'SOW')}_{project.id}.pdf")
+        previous_pdf = None
+        if existing_project is not None and os.path.isfile(previous_pdf_path):
+            with open(previous_pdf_path, "rb") as previous_file:
+                previous_pdf = previous_file.read()
         pdf_filename = generate_project_pdf(project)
-        pdf_path = os.path.join(app.instance_path, "generated_pdfs", pdf_filename)
+        pdf_path = os.path.join(pdf_dir, pdf_filename)
         try:
             db.session.commit()
         except Exception:
-            # Avoid leaving a PDF behind if the database commit fails.
-            try:
-                os.remove(pdf_path)
-            except FileNotFoundError:
-                pass
+            if previous_pdf is not None:
+                with open(pdf_path, "wb") as previous_file:
+                    previous_file.write(previous_pdf)
+            else:
+                try:
+                    os.remove(pdf_path)
+                except FileNotFoundError:
+                    pass
             raise
         session.pop("sow_draft_token", None)
         if draft_token:
@@ -626,13 +642,16 @@ def create_project():
                 os.remove(draft_path)
             except FileNotFoundError:
                 pass
-        flash(f"SOW saved. PDF generated automatically: {pdf_filename}", "success")
+        action_word = "updated" if existing_project is not None else "created"
+        flash(f"SOW {action_word} in the database. PDF generated automatically: {pdf_filename}", "success")
         return redirect(url_for("print_project", project_id=project.id, saved=1))
     except Exception as exc:
         db.session.rollback()
         app.logger.exception("Could not save SOW project or generate PDF")
         flash("Could not save the SOW or generate the PDF. Check the database and PDF dependencies. Details: " + str(exc), "error")
-        return render_template("form.html", data=data, resources=[], milestones=[]), 500
+        return render_template("form.html", **form_context(data=data, resources=[], milestones=[],
+                                                            edit_project_id=edit_project_id,
+                                                            editing_project=existing_project)), 500
 
 
 @app.route("/projects/<int:project_id>/print")

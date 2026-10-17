@@ -14,7 +14,7 @@
         {% if confirmation_error|default('') %}<p class="form-error" role="alert">{{ confirmation_error }}</p>{% endif %}
         <form action="{{ url_for('create_project') }}" method="post" id="final-save-form">
           <label>Project code<input name="project_code_confirm" value="{{ project.project_code }}" readonly required></label>
-          <label>SOW version<input name="sow_version" value="{{ request.form.get('sow_version', project.sow_version|default('1.0')) }}" required maxlength="30" placeholder="e.g. 1.0 or 1.1"></label>
+          <label>SOW version<input name="sow_version" value="{{ request.form.get('sow_version', project.sow_version|default('')) }}" required maxlength="30" placeholder="e.g. 1.0 or 1.1"></label>
           <label>Change summary<textarea name="change_summary" rows="4" placeholder="Describe what changed in this SOW version…" required>{{ request.form.get('change_summary', '') }}</textarea></label>
           <div class="modal-actions"><button class="btn btn-light" type="button" id="cancel-save-confirm">Cancel</button><button class="btn btn-primary" type="submit">Confirm &amp; Save PDF</button></div>
         </form>
@@ -22,18 +22,20 @@
     </div>
   {% else %}
     <a class="btn btn-light" href="{{ url_for('index') }}">← New SOW</a>
+    <a class="btn btn-light" href="{{ url_for('list_projects') }}">Saved SOWs</a>
+    <a class="btn btn-light" href="{{ url_for('edit_project', project_id=project.id) }}">Edit this SOW</a>
     {% if pdf_exists %}<a class="btn btn-light" href="{{ url_for('download_project_pdf', project_id=project.id) }}">Download saved PDF ⤓</a>{% endif %}
     <button class="btn btn-primary" onclick="window.print()">Print preview</button>
   {% endif %}
 </div>
 {% if not preview_mode and request.args.get('saved') %}<div class="no-print saved-notice">SOW saved to the database and PDF generated automatically.</div>{% endif %}
 <main class="document">
-  <header class="doc-header"><div><div class="eyebrow">STATEMENT OF WORK</div><h1>{{ project.project_name }}</h1><p>{{ project.project_code }} · {{ project.region or 'Region not specified' }} · SOW Version {{ project.sow_version|default('1.0') }}</p></div><div class="doc-mark">SOW</div></header>
+  <header class="doc-header"><div><div class="eyebrow">STATEMENT OF WORK</div><h1>{{ project.project_name }}</h1><p>{{ project.project_code }} · {{ project.region or 'Region not specified' }} · SOW Version {{ project.sow_version|default('Not set') }}</p></div><div class="doc-mark">SOW</div></header>
   <section class="doc-section"><h2>01 · Project details</h2><div class="doc-grid">
     {% for label, value in [('Project code',project.project_code),('Project name',project.project_name),('Project team',project.project_team),('Project type',project.project_type),('Start date',project.start_date),('End date',project.end_date),('No. of FTEs',project.fte_count),('Region',project.region),('Client name',project.client_name),('Business lead',project.business_lead),('Lead designation',project.business_lead_designation),('Lead email',project.business_lead_email),('Billing model',project.billing_model),('Change effective date',project.change_effective_date)] %}
     <div class="doc-field"><span>{{ label }}</span><strong>{{ value or '—' }}</strong></div>{% endfor %}
   </div></section>
-  {% if project.change_summary %}<section class="doc-section"><h2>Change summary · Version {{ project.sow_version|default('1.0') }}</h2><div class="rich-output">{{ project.change_summary|safe }}</div></section>{% endif %}
+  {% if project.change_summary %}<section class="doc-section"><h2>Change summary · Version {{ project.sow_version|default('Not set') }}</h2><div class="rich-output">{{ project.change_summary|safe }}</div></section>{% endif %}
   <section class="doc-section"><h2>02 · Cost &amp; billing</h2><table class="doc-table"><thead><tr><th>Cost item</th><th>Basis</th><th>Amount (INR)</th><th>Currency</th><th>FX rate</th><th>Amount (FX)</th></tr></thead><tbody>
     <tr><td>Project</td><td>Cost per month</td><td>{{ project.project_cost_inr or '—' }}</td><td>{{ project.billing_currency or '—' }}</td><td>{{ project.fx_rate or '—' }}</td><td>{{ project.project_cost_fx or '—' }}</td></tr>
     <tr><td>Travel</td><td>As applicable</td><td>{{ project.travel_cost_inr or '—' }}</td><td>{{ project.travel_currency or '—' }}</td><td>{{ project.travel_fx_rate or '—' }}</td><td>{{ project.travel_cost_fx or '—' }}</td></tr>
