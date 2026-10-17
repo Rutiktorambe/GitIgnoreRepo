@@ -2,7 +2,19 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ project.project_code }} - {{ project.project_name }} | SOW</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
 <body class="print-body">
-<div class="print-toolbar no-print"><a class="btn btn-light" href="{{ url_for('index') }}">← Back to workspace</a><button class="btn btn-primary" onclick="window.print()">Print / Save as PDF ⤓</button></div>
+<div class="print-toolbar no-print">
+  {% if preview_mode %}
+    <button class="btn btn-light" onclick="history.back()">← Back to edit</button>
+    <form action="{{ url_for('create_project') }}" method="post" class="save-final-form">
+      <button class="btn btn-primary" type="submit">Save SOW &amp; Generate PDF ✓</button>
+    </form>
+  {% else %}
+    <a class="btn btn-light" href="{{ url_for('index') }}">← New SOW</a>
+    {% if pdf_exists %}<a class="btn btn-light" href="{{ url_for('download_project_pdf', project_id=project.id) }}">Download saved PDF ⤓</a>{% endif %}
+    <button class="btn btn-primary" onclick="window.print()">Print preview</button>
+  {% endif %}
+</div>
+{% if not preview_mode and request.args.get('saved') %}<div class="no-print saved-notice">SOW saved to the database and PDF generated automatically.</div>{% endif %}
 <main class="document">
   <header class="doc-header"><div><div class="eyebrow">STATEMENT OF WORK</div><h1>{{ project.project_name }}</h1><p>{{ project.project_code }} · {{ project.region or 'Region not specified' }}</p></div><div class="doc-mark">SOW</div></header>
   <section class="doc-section"><h2>01 · Project details</h2><div class="doc-grid">

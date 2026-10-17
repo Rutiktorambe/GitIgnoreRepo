@@ -64,3 +64,7 @@ The app now includes collapsible form sections, a sticky section navigator, bill
 
 ## Rich text formatting
 Narrative text fields use a Quill rich-text toolbar for bold, italic, underline, headings, bullets/numbered lists, text color, alignment, links and block quotes. Formatted HTML is stored in the existing SQLAlchemy `Text` columns and loaded back into the editor when editing a record. The print view renders the saved formatting. Install the new `bleach` dependency with `pip install -r requirements.txt`; submitted HTML is sanitized server-side before being stored.
+
+
+## Preview → Save → automatic PDF
+The main form posts to `/preview` and does not write to the database yet. A temporary draft is kept server-side (rather than inside the browser cookie). The preview uses the print document layout. Choose **Save SOW & Generate PDF** to persist the project/resource/milestone rows and automatically create a PDF under `instance/generated_pdfs/`. The saved record's print page includes a **Download saved PDF** link. PDF generation uses ReportLab; install it with `pip install -r requirements.txt`.

@@ -29,8 +29,8 @@
   {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}
     <div class="alert">{{ message }}</div>
   {% endfor %}{% endwith %}
-  <form action="{{ url_for('create_project') }}" method="post" id="sow-form">
-    <div class="intro-row"><div><h2>Create a SOW record</h2><p>Review the prefilled sample values, make changes, then submit to save and open a print-ready SOW.</p></div><div class="form-actions"><button type="reset" class="btn btn-light">Reset</button><button type="submit" class="btn btn-primary">Save &amp; open print view ↗</button></div></div>
+  <form action="{{ url_for('preview_project') }}" method="post" id="sow-form">
+    <div class="intro-row"><div><h2>Create a SOW record</h2><p>Review the values, then preview the print-ready SOW before saving.</p></div><div class="form-actions"><button type="reset" class="btn btn-light">Reset</button><button type="submit" class="btn btn-primary">Preview &amp; Next →</button></div></div>
 
     <details class="panel collapsible" id="project-details" open><summary class="section-heading"><span class="section-number">01</span><div><h3>Project details</h3><p>Ownership, dates and commercial setup</p></div><span class="collapse-indicator">⌄</span></summary>
       <div class="grid">
@@ -104,7 +104,7 @@
         <label>Declarations<textarea class="rich-text-source" id="declarations" name="declarations" rows="4">{{ data.declarations }}</textarea></label>
       </div>
     </details>
-    <div class="bottom-submit"><span>Submitting saves the record and opens the printable document.</span><button type="submit" class="btn btn-primary">Save SOW &amp; Print ↗</button></div>
+    <div class="bottom-submit"><span>Preview first. The final Save step stores the record and automatically generates a PDF.</span><button type="submit" class="btn btn-primary">Preview SOW &amp; Next →</button></div>
   </form>
   <footer>Internal SOW workspace · Demo data is prefilled from the reference screenshots</footer>
 </main>

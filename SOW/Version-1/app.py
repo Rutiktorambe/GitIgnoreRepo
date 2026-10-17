@@ -1,12 +1,24 @@
 import os
 import json
+import re
+import io
+import uuid
+import html
+from types import SimpleNamespace
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-import bleach
-from flask import Flask, render_template, request, redirect, url_for, flash
+
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
+import bleach
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
 
 load_dotenv()
 
@@ -230,15 +242,270 @@ def get_form_data():
 
 @app.route("/")
 def index():
+    # Start a new form with the sample data. The browser back button can return from preview.
     return render_template(
         "form.html", data=DEFAULT_DATA, resources=DEFAULT_RESOURCES,
         milestones=DEFAULT_MILESTONES
     )
 
 
+
+def _draft_values():
+    """Read the pending preview draft from server-side storage."""
+    token = session.get("sow_draft_token")
+    if not token:
+        return {}
+    draft_path = os.path.join(app.instance_path, "drafts", f"{token}.json")
+    if not os.path.isfile(draft_path):
+        return {}
+    try:
+        with open(draft_path, "r", encoding="utf-8") as draft_file:
+            return json.load(draft_file)
+    except (OSError, ValueError):
+        return {}
+
+
+def _draft_scalar_values(draft):
+    return {key: (values[-1] if isinstance(values, list) and values else "")
+            for key, values in draft.items()}
+
+
+def _preview_object(draft):
+    values = _draft_scalar_values(draft)
+    data = DEFAULT_DATA.copy()
+    data.update(values)
+
+    def val(name, index, default=""):
+        items = draft.get(name, [])
+        return items[index] if index < len(items) else default
+
+    resources = []
+    for i, name in enumerate(draft.get("resource_name[]", [])):
+        if not name.strip():
+            continue
+        resources.append(SimpleNamespace(
+            name=name, billing_level=val("resource_level[]", i),
+            team=val("resource_team[]", i),
+            allocation_percent=val("resource_allocation[]", i, "100"),
+            start_date=parse_date(val("resource_start[]", i)),
+            end_date=parse_date(val("resource_end[]", i)),
+            responsibilities=val("resource_responsibilities[]", i)
+        ))
+    milestones = []
+    for i, name in enumerate(draft.get("milestone_name[]", [])):
+        if not name.strip():
+            continue
+        try:
+            points = int(val("milestone_points[]", i, "0") or 0)
+        except ValueError:
+            points = 0
+        milestones.append(SimpleNamespace(
+            milestone=name, action_points=points,
+            start_date=parse_date(val("milestone_start[]", i)),
+            end_date=parse_date(val("milestone_end[]", i)),
+            description=val("milestone_description[]", i)
+        ))
+
+    return SimpleNamespace(
+        id="PREVIEW", created_at=datetime.now(),
+        project_code=values.get("project_code", ""),
+        project_name=values.get("project_name", ""),
+        project_team=values.get("project_team", ""),
+        project_type=values.get("project_type", ""),
+        start_date=parse_date(values.get("start_date")),
+        end_date=parse_date(values.get("end_date")),
+        fte_count=values.get("fte_count", ""),
+        region=values.get("region", ""),
+        client_name=values.get("client_name", ""),
+        business_lead=values.get("business_lead", ""),
+        business_lead_designation=values.get("business_lead_designation", ""),
+        business_lead_email=values.get("business_lead_email", ""),
+        billing_model=values.get("billing_model", ""),
+        change_effective_date=parse_date(values.get("change_effective_date")),
+        already_agreed_fte=values.get("already_agreed_fte", ""),
+        project_cost_inr=values.get("project_cost_inr", ""),
+        billing_currency=values.get("billing_currency", ""),
+        fx_rate=values.get("fx_rate", ""),
+        project_cost_fx=values.get("project_cost_fx", ""),
+        travel_cost_inr=values.get("travel_cost_inr", ""),
+        travel_currency=values.get("travel_currency", ""),
+        travel_fx_rate=values.get("travel_fx_rate", ""),
+        travel_cost_fx=values.get("travel_cost_fx", ""),
+        executive_summary=clean_rich_text(values.get("executive_summary", "")),
+        background=clean_rich_text(values.get("background", "")),
+        in_scope=clean_rich_text(values.get("in_scope", "")),
+        out_of_scope=clean_rich_text(values.get("out_of_scope", "")),
+        dependencies_risks=clean_rich_text(values.get("dependencies_risks", "")),
+        required_skills=clean_rich_text(values.get("required_skills", "")),
+        software_required=clean_rich_text(values.get("software_required", "")),
+        other_notes=clean_rich_text(values.get("other_notes", "")),
+        declarations=clean_rich_text(values.get("declarations", "")),
+        resources=resources, milestones=milestones
+    )
+
+
+def generate_project_pdf(project):
+    """Generate a PDF on the server and return its filename."""
+    output_dir = os.path.join(app.instance_path, "generated_pdfs")
+    os.makedirs(output_dir, exist_ok=True)
+    safe_code = re.sub(r"[^A-Za-z0-9_-]+", "_", project.project_code or "SOW")
+    filename = f"{safe_code}_{project.id}.pdf"
+    output_path = os.path.join(output_dir, filename)
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="SowTitle", parent=styles["Title"], fontName="Helvetica-Bold",
+                              fontSize=19, leading=23, textColor=colors.HexColor("#35245e"), alignment=TA_LEFT))
+    styles.add(ParagraphStyle(name="SowSection", parent=styles["Heading2"], fontSize=12, leading=15,
+                              textColor=colors.HexColor("#35245e"), spaceBefore=10, spaceAfter=6))
+    styles.add(ParagraphStyle(name="SowBody", parent=styles["BodyText"], fontSize=8.5, leading=11, spaceAfter=4))
+    styles.add(ParagraphStyle(name="SowSmall", parent=styles["BodyText"], fontSize=7, leading=9))
+    story = [
+        Paragraph("STATEMENT OF WORK", styles["SowSmall"]),
+        Paragraph(html.escape(project.project_name or "Untitled SOW"), styles["SowTitle"]),
+        Paragraph(f"Project code: {html.escape(str(project.project_code or '—'))} &nbsp; | &nbsp; Region: {html.escape(str(project.region or '—'))}", styles["SowBody"]),
+        Spacer(1, 4*mm),
+    ]
+
+    def fmt(value):
+        if value is None or str(value).strip() == "":
+            return "—"
+        if isinstance(value, (date, datetime)):
+            return value.strftime("%d-%b-%Y")
+        return str(value)
+
+    def add_section(title, rows):
+        story.append(Paragraph(html.escape(title), styles["SowSection"]))
+        table = Table([[Paragraph(f"<b>{html.escape(str(k))}</b>", styles["SowSmall"]),
+                        Paragraph(html.escape(fmt(v)), styles["SowSmall"])] for k, v in rows],
+                      colWidths=[48*mm, 220*mm], repeatRows=0)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#f0edf8")),
+            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (0,0), (-1,-1), 5), ("RIGHTPADDING", (0,0), (-1,-1), 5),
+            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 2*mm))
+
+    def add_rich_section(title, value):
+        if not value:
+            return
+        story.append(Paragraph(html.escape(title), styles["SowSection"]))
+        # ReportLab Paragraph supports a safe subset of HTML; sanitize and convert common tags.
+        content = value.replace("<p", "<para").replace("</p>", "</para>")
+        content = re.sub(r'<(h[23])[^>]*>', '<b>', content, flags=re.I)
+        content = re.sub(r'</h[23]>', '</b><br/>', content, flags=re.I)
+        content = re.sub(r'<span[^>]*>', '', content, flags=re.I).replace("</span>", "")
+        content = content.replace("<div>", "").replace("</div>", "<br/>")
+        content = content.replace("<blockquote>", "<i>").replace("</blockquote>", "</i><br/>")
+        content = re.sub(r"""<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)</a>""", r'<link href="\1" color="blue">\2</link>', content, flags=re.I)
+        # Keep only tags ReportLab can parse, stripping style attributes and Quill classes.
+        content = re.sub(r'<(p|para|strong|b|em|i|u|ol|ul|li|br)(?:\s+[^>]*)?>', lambda m: "<" + m.group(1).lower() + ">", content, flags=re.I)
+        content = re.sub(r'<(?!/?(?:para|strong|b|em|i|u|ol|ul|li|br|link)\b)[^>]+>', '', content, flags=re.I)
+        content = content.replace("&nbsp;", " ").replace("&#39;", "'")
+        if not content.strip():
+            return
+        try:
+            story.append(Paragraph(content, styles["SowBody"]))
+        except Exception:
+            plain = re.sub(r"<[^>]+>", " ", content)
+            story.append(Paragraph(html.escape(plain), styles["SowBody"]))
+
+    add_section("01 · Project details", [
+        ("Project code", project.project_code), ("Project name", project.project_name),
+        ("Project team", project.project_team), ("Project type", project.project_type),
+        ("Start date", project.start_date), ("End date", project.end_date),
+        ("No. of FTEs", project.fte_count), ("Region", project.region),
+        ("Client name", project.client_name), ("Business lead", project.business_lead),
+        ("Lead designation", project.business_lead_designation), ("Lead email", project.business_lead_email),
+        ("Billing model", project.billing_model), ("Change effective date", project.change_effective_date),
+    ])
+    add_section("02 · Cost & billing", [
+        ("Project cost (INR)", project.project_cost_inr), ("Billing currency", project.billing_currency),
+        ("FX rate", project.fx_rate), ("Project amount (FX)", project.project_cost_fx),
+        ("Travel cost (INR)", project.travel_cost_inr), ("Travel currency", project.travel_currency),
+        ("Travel FX rate", project.travel_fx_rate), ("Travel amount (FX)", project.travel_cost_fx),
+        ("Already agreed FTE arrangement", project.already_agreed_fte),
+    ])
+
+    def add_grid_table(title, headers, rows):
+        story.append(Paragraph(html.escape(title), styles["SowSection"]))
+        data = [[Paragraph(f"<b>{html.escape(str(h))}</b>", styles["SowSmall"]) for h in headers]]
+        for row in rows:
+            data.append([Paragraph(html.escape(fmt(v)), styles["SowSmall"]) for v in row])
+        if len(data) == 1:
+            data.append([Paragraph("No records provided", styles["SowSmall"])] + [Paragraph("", styles["SowSmall"]) for _ in headers[1:]])
+        widths = [268*mm / len(headers)] * len(headers)
+        table = Table(data, colWidths=widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#35245e")),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (0,0), (-1,-1), 4), ("RIGHTPADDING", (0,0), (-1,-1), 4),
+            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 2*mm))
+
+    add_grid_table("03 · Resource plan",
+        ["Name", "Billing level", "Team", "Allocation", "Start", "End", "Responsibilities"],
+        [[r.name, r.billing_level, r.team, f"{fmt(r.allocation_percent)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources])
+    add_grid_table("04 · Milestones & activities",
+        ["Milestone", "Action points", "Start", "End", "Description"],
+        [[m.milestone, m.action_points, m.start_date, m.end_date, m.description] for m in project.milestones])
+
+    for title, value in [
+        ("05 · Executive summary", project.executive_summary), ("Background", project.background),
+        ("In scope", project.in_scope), ("Out of scope", project.out_of_scope),
+        ("06 · Dependencies & risks", project.dependencies_risks), ("Required skills", project.required_skills),
+        ("Software required", project.software_required), ("Other notes", project.other_notes),
+        ("Declarations", project.declarations),
+    ]:
+        add_rich_section(title, value)
+
+    def add_page_number(canvas, doc):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(colors.HexColor("#777777"))
+        canvas.drawString(14*mm, 7*mm, f"SOW {project.project_code} · Record {project.id}")
+        canvas.drawRightString(283*mm, 7*mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    doc = SimpleDocTemplate(output_path, pagesize=landscape(A4),
+                            rightMargin=14*mm, leftMargin=14*mm,
+                            topMargin=12*mm, bottomMargin=13*mm,
+                            title=f"{project.project_code} - {project.project_name}")
+    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
+    return filename
+
+
+@app.route("/preview", methods=["POST"])
+def preview_project():
+    # Store the potentially large form server-side; only keep a short token in the session cookie.
+    draft = request.form.to_dict(flat=False)
+    token = uuid.uuid4().hex
+    draft_dir = os.path.join(app.instance_path, "drafts")
+    os.makedirs(draft_dir, exist_ok=True)
+    with open(os.path.join(draft_dir, f"{token}.json"), "w", encoding="utf-8") as draft_file:
+        json.dump(draft, draft_file, ensure_ascii=False)
+    session["sow_draft_token"] = token
+    project = _preview_object(draft)
+    return render_template("print.html", project=project, preview_mode=True)
+
+
 @app.route("/projects", methods=["POST"])
 def create_project():
-    data = get_form_data()
+    draft_token = session.get("sow_draft_token")
+    draft = _draft_values()
+    if not draft:
+        # Support direct POSTs as a fallback, though the UI normally posts through Preview.
+        draft = request.form.to_dict(flat=False)
+    values = _draft_scalar_values(draft)
+    data = DEFAULT_DATA.copy()
+    data.update(values)
+
     project = SowProject(
         project_code=data.get("project_code", "").strip(),
         project_name=data.get("project_name", "").strip(),
@@ -278,60 +545,73 @@ def create_project():
         db.session.add(project)
         db.session.flush()
 
-        resource_names = request.form.getlist("resource_name[]")
-        levels = request.form.getlist("resource_level[]")
-        teams = request.form.getlist("resource_team[]")
-        allocations = request.form.getlist("resource_allocation[]")
-        starts = request.form.getlist("resource_start[]")
-        ends = request.form.getlist("resource_end[]")
-        responsibilities = request.form.getlist("resource_responsibilities[]")
-        for i, name in enumerate(resource_names):
+        def val(name, index, default=""):
+            items = draft.get(name, [])
+            return items[index] if index < len(items) else default
+
+        for i, name in enumerate(draft.get("resource_name[]", [])):
             if not name.strip():
                 continue
             project.resources.append(SowResource(
                 name=name.strip(),
-                billing_level=levels[i] if i < len(levels) else "",
-                team=teams[i] if i < len(teams) else "",
-                allocation_percent=parse_decimal(allocations[i] if i < len(allocations) else "100"),
-                start_date=parse_date(starts[i] if i < len(starts) else ""),
-                end_date=parse_date(ends[i] if i < len(ends) else ""),
-                responsibilities=responsibilities[i] if i < len(responsibilities) else "",
+                billing_level=val("resource_level[]", i),
+                team=val("resource_team[]", i),
+                allocation_percent=parse_decimal(val("resource_allocation[]", i, "100")),
+                start_date=parse_date(val("resource_start[]", i)),
+                end_date=parse_date(val("resource_end[]", i)),
+                responsibilities=val("resource_responsibilities[]", i),
                 sort_order=i,
             ))
 
-        names = request.form.getlist("milestone_name[]")
-        points = request.form.getlist("milestone_points[]")
-        mstarts = request.form.getlist("milestone_start[]")
-        mends = request.form.getlist("milestone_end[]")
-        descriptions = request.form.getlist("milestone_description[]")
-        for i, name in enumerate(names):
+        for i, name in enumerate(draft.get("milestone_name[]", [])):
             if not name.strip():
                 continue
             try:
-                action_points = int(points[i]) if i < len(points) and points[i] else 0
+                action_points = int(val("milestone_points[]", i, "0") or 0)
             except ValueError:
                 action_points = 0
             project.milestones.append(SowMilestone(
-                milestone=name.strip(),
-                action_points=action_points,
-                start_date=parse_date(mstarts[i] if i < len(mstarts) else ""),
-                end_date=parse_date(mends[i] if i < len(mends) else ""),
-                description=descriptions[i] if i < len(descriptions) else "",
+                milestone=name.strip(), action_points=action_points,
+                start_date=parse_date(val("milestone_start[]", i)),
+                end_date=parse_date(val("milestone_end[]", i)),
+                description=val("milestone_description[]", i),
                 sort_order=i,
             ))
+
         db.session.commit()
-        return redirect(url_for("print_project", project_id=project.id))
+        pdf_filename = generate_project_pdf(project)
+        session.pop("sow_draft_token", None)
+        if draft_token:
+            draft_path = os.path.join(app.instance_path, "drafts", f"{draft_token}.json")
+            try:
+                os.remove(draft_path)
+            except FileNotFoundError:
+                pass
+        flash(f"SOW saved. PDF generated automatically: {pdf_filename}", "success")
+        return redirect(url_for("print_project", project_id=project.id, saved=1))
     except Exception as exc:
         db.session.rollback()
-        app.logger.exception("Could not save SOW project")
-        flash("Could not save the SOW. Check your database connection and required fields. Details: " + str(exc), "error")
+        app.logger.exception("Could not save SOW project or generate PDF")
+        flash("Could not save the SOW or generate the PDF. Check the database and PDF dependencies. Details: " + str(exc), "error")
         return render_template("form.html", data=data, resources=[], milestones=[]), 500
 
 
 @app.route("/projects/<int:project_id>/print")
 def print_project(project_id):
     project = db.get_or_404(SowProject, project_id)
-    return render_template("print.html", project=project)
+    pdf_filename = f"{re.sub(r'[^A-Za-z0-9_-]+', '_', project.project_code or 'SOW')}_{project.id}.pdf"
+    pdf_path = os.path.join(app.instance_path, "generated_pdfs", pdf_filename)
+    return render_template("print.html", project=project, preview_mode=False,
+                           pdf_exists=os.path.exists(pdf_path), pdf_filename=pdf_filename)
+
+
+@app.route("/projects/<int:project_id>/pdf")
+def download_project_pdf(project_id):
+    project = db.get_or_404(SowProject, project_id)
+    pdf_filename = f"{re.sub(r'[^A-Za-z0-9_-]+', '_', project.project_code or 'SOW')}_{project.id}.pdf"
+    return send_from_directory(os.path.join(app.instance_path, "generated_pdfs"),
+                               pdf_filename, as_attachment=True,
+                               download_name=pdf_filename)
 
 
 @app.route("/health")
