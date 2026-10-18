@@ -1,52 +1,66 @@
 document.addEventListener("DOMContentLoaded", () => {
   const resourceBody = document.querySelector("#resources-table tbody");
   const milestoneBody = document.querySelector("#milestones-table tbody");
+  const fteInput = document.querySelector("#fte-count");
+
+  // FTE total is the sum of resource allocation percentages divided by 100.
+  // Examples: 100% = 1.0 FTE; 50% = 0.5 FTE; two 50% resources = 1.0 FTE.
+  const updateFteTotal = () => {
+    if (!fteInput || !resourceBody) return;
+    const total = [...resourceBody.querySelectorAll('input[name="resource_allocation[]"]')]
+      .reduce((sum, input) => {
+        const value = Number.parseFloat(input.value);
+        return sum + (Number.isFinite(value) && value > 0 ? value : 0);
+      }, 0) / 100;
+    fteInput.value = (Math.round(total * 100) / 100).toFixed(2).replace(/\\.00$/, "");
+  };
+  if (resourceBody) {
+    resourceBody.addEventListener("input", (event) => {
+      if (event.target.matches('input[name="resource_allocation[]"]')) updateFteTotal();
+    });
+    resourceBody.addEventListener("change", (event) => {
+      if (event.target.matches('input[name="resource_allocation[]"]')) updateFteTotal();
+    });
+  }
   document.querySelector("#add-resource").addEventListener("click", () => {
-    resourceBody.appendChild(
-      document.querySelector("#resource-row-template").content.cloneNode(true),
-    );
+    resourceBody.appendChild(document.querySelector("#resource-row-template").content.cloneNode(true));
+    updateFteTotal();
   });
   document.querySelector("#add-milestone").addEventListener("click", () => {
-    milestoneBody.appendChild(
-      document.querySelector("#milestone-row-template").content.cloneNode(true),
-    );
+    milestoneBody.appendChild(document.querySelector("#milestone-row-template").content.cloneNode(true));
   });
   document.addEventListener("click", (event) => {
     const button = event.target.closest(".remove-row");
-    if (button) button.closest("tr").remove();
+    if (button) {
+      const wasResource = Boolean(button.closest("#resources-table"));
+      button.closest("tr").remove();
+      if (wasResource) updateFteTotal();
+    }
   });
 
   // Section navigator: open the target section, scroll it into view, and mark active link.
+  const sowForm = document.querySelector("#sow-form");
+  sowForm?.addEventListener("reset", () => window.setTimeout(updateFteTotal, 0));
+  updateFteTotal();
+
   const navLinks = [...document.querySelectorAll(".nav-link")];
   navLinks.forEach((link) => {
     link.addEventListener("click", () => {
       const target = document.querySelector(link.getAttribute("href"));
-      if (target && target.tagName.toLowerCase() === "details")
-        target.open = true;
-      navLinks.forEach((item) =>
-        item.classList.toggle("active", item === link),
-      );
+      if (target && target.tagName.toLowerCase() === "details") target.open = true;
+      navLinks.forEach((item) => item.classList.toggle("active", item === link));
     });
   });
 
   // Keep the navigator highlight in sync with the section nearest the viewport.
   const sections = [...document.querySelectorAll("details.collapsible")];
   if ("IntersectionObserver" in window) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible)
-          navLinks.forEach((link) =>
-            link.classList.toggle(
-              "active",
-              link.getAttribute("href") === "#" + visible.target.id,
-            ),
-          );
-      },
-      { rootMargin: "-15% 0px -65% 0px", threshold: [0, 0.1, 0.25] },
-    );
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) navLinks.forEach((link) =>
+        link.classList.toggle("active", link.getAttribute("href") === "#" + visible.target.id));
+    }, { rootMargin: "-15% 0px -65% 0px", threshold: [0, 0.1, 0.25] });
     sections.forEach((section) => observer.observe(section));
   }
 });
@@ -58,28 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const toolbarButtons = [
     { label: "B", command: "bold", title: "Bold", className: "editor-bold" },
-    {
-      label: "I",
-      command: "italic",
-      title: "Italic",
-      className: "editor-italic",
-    },
-    {
-      label: "U",
-      command: "underline",
-      title: "Underline",
-      className: "editor-underline",
-    },
+    { label: "I", command: "italic", title: "Italic", className: "editor-italic" },
+    { label: "U", command: "underline", title: "Underline", className: "editor-underline" },
     { label: "• List", command: "insertUnorderedList", title: "Bulleted list" },
     { label: "1. List", command: "insertOrderedList", title: "Numbered list" },
     { label: "H2", command: "formatBlock", value: "h2", title: "Heading" },
-    {
-      label: "Quote",
-      command: "formatBlock",
-      value: "blockquote",
-      title: "Block quote",
-    },
-    { label: "Clear", command: "removeFormat", title: "Clear formatting" },
+    { label: "Quote", command: "formatBlock", value: "blockquote", title: "Block quote" },
+    { label: "Clear", command: "removeFormat", title: "Clear formatting" }
   ];
 
   document.querySelectorAll("textarea.rich-text-source").forEach((textarea) => {
@@ -96,20 +95,11 @@ document.addEventListener("DOMContentLoaded", () => {
     editor.contentEditable = "true";
     editor.setAttribute("role", "textbox");
     editor.setAttribute("aria-multiline", "true");
-    editor.setAttribute(
-      "aria-label",
-      textarea.closest("label")?.childNodes?.[0]?.textContent?.trim() ||
-        "Rich text editor",
-    );
-    editor.dataset.placeholder =
-      "Enter details… use the toolbar to format text.";
+    editor.setAttribute("aria-label", textarea.closest("label")?.childNodes?.[0]?.textContent?.trim() || "Rich text editor");
+    editor.dataset.placeholder = "Enter details… use the toolbar to format text.";
 
     const initialValue = (textarea.value || "").trim();
-    if (
-      /<\/?(p|br|strong|b|em|i|u|ol|ul|li|h[1-6]|blockquote|span|a)\b/i.test(
-        initialValue,
-      )
-    ) {
+    if (/<\/?(p|br|strong|b|em|i|u|ol|ul|li|h[1-6]|blockquote|span|a)\b/i.test(initialValue)) {
       editor.innerHTML = initialValue;
     } else {
       editor.textContent = textarea.value || "";
@@ -156,11 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.setTimeout(() => {
         editors.forEach(({ textarea, editor, syncValue }) => {
           const value = textarea.defaultValue || "";
-          if (
-            /<\/?(p|br|strong|b|em|i|u|ol|ul|li|h[1-6]|blockquote|span|a)\b/i.test(
-              value,
-            )
-          ) {
+          if (/<\/?(p|br|strong|b|em|i|u|ol|ul|li|h[1-6]|blockquote|span|a)\b/i.test(value)) {
             editor.innerHTML = value;
           } else {
             editor.textContent = value;
@@ -172,6 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 
 // Final-save confirmation modal. Server-side validation is authoritative.
 document.addEventListener("DOMContentLoaded", () => {
@@ -209,9 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (missing) {
       event.preventDefault();
       if (summary && !summary.value.trim()) {
-        summary.setCustomValidity(
-          "Please enter a change summary before saving.",
-        );
+        summary.setCustomValidity("Please enter a change summary before saving.");
         summary.reportValidity();
         summary.focus();
       } else if (version) {

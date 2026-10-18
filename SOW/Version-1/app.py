@@ -96,7 +96,7 @@ class SowResource(db.Model):
     name = db.Column(db.String(150), nullable=False)
     billing_level = db.Column(db.String(100))
     team = db.Column(db.String(100))
-    allocation_percent = db.Column(db.Numeric(6, 2), default=100)
+    allocation_percent = db.Column(db.Numeric(6, 4), default=1.0)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     responsibilities = db.Column(db.String(500))
@@ -160,6 +160,16 @@ def parse_date(value):
         return None
 
 
+def calculate_fte_from_allocations(form):
+    """Calculate total FTE from submitted resource allocation percentages."""
+    total_percent = Decimal("0")
+    for raw in form.getlist("resource_allocation[]"):
+        allocation = parse_decimal(raw)
+        if allocation is not None and allocation > 0:
+            total_percent += allocation
+    return (total_percent / Decimal("100")).quantize(Decimal("0.01"))
+
+
 def parse_decimal(value):
     if value is None or str(value).strip() == "":
         return None
@@ -183,14 +193,13 @@ def database_choices(model, column_name):
 
 def form_context(data=None, resources=None, milestones=None, edit_project_id="", editing_project=None):
     return {
-        "data": data if data is not None else EMPTY_DATA.copy(),
+        "data": data if data is not None else {**EMPTY_DATA, "fte_count": "0"},
         "resources": resources if resources is not None else [],
         "milestones": milestones if milestones is not None else [],
         "edit_project_id": edit_project_id,
         "editing_project": editing_project,
         "billing_levels": database_choices(SowResource, "billing_level"),
         "resource_teams": database_choices(SowResource, "team"),
-        "agreed_fte_choices": database_choices(SowProject, "already_agreed_fte"),
     }
 
 
@@ -241,7 +250,7 @@ def edit_project(project_id):
         if isinstance(value, (date, datetime)):
             value = value.strftime("%Y-%m-%d")
         data[key] = "" if value is None else str(value)
-    resources = [(r.name, r.billing_level or "", str(r.allocation_percent if r.allocation_percent is not None else 100),
+    resources = [(r.name, r.billing_level or "", str((r.allocation_percent * 100) if r.allocation_percent is not None else 100),
                   r.start_date.strftime("%Y-%m-%d") if r.start_date else "",
                   r.end_date.strftime("%Y-%m-%d") if r.end_date else "", r.responsibilities or "", r.team or "")
                  for r in saved.resources]
@@ -461,7 +470,7 @@ def generate_project_pdf(project):
 
     add_grid_table("03 · Resource plan",
         ["Name", "Billing level", "Team", "Allocation", "Start", "End", "Responsibilities"],
-        [[r.name, r.billing_level, r.team, f"{fmt(r.allocation_percent)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources])
+        [[r.name, r.billing_level, r.team, f"{fmt((r.allocation_percent or 0) * 100)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources])
     add_grid_table("04 · Milestones & activities",
         ["Milestone", "Action points", "Start", "End", "Description"],
         [[m.milestone, m.action_points, m.start_date, m.end_date, m.description] for m in project.milestones])
@@ -544,7 +553,7 @@ def create_project():
     project.project_type = data.get("project_type")
     project.start_date = parse_date(data.get("start_date"))
     project.end_date = parse_date(data.get("end_date"))
-    project.fte_count = parse_decimal(data.get("fte_count"))
+    project.fte_count = calculate_fte_from_allocations(request.form)
     project.region = data.get("region")
     project.client_name = data.get("client_name")
     project.business_lead = data.get("business_lead")
@@ -591,7 +600,7 @@ def create_project():
                 name=name.strip(),
                 billing_level=val("resource_level[]", i),
                 team=val("resource_team[]", i),
-                allocation_percent=parse_decimal(val("resource_allocation[]", i, "100")),
+                allocation_percent=(parse_decimal(val("resource_allocation[]", i, "100")) / Decimal("100")) if parse_decimal(val("resource_allocation[]", i, "100")) is not None else Decimal("1"),
                 start_date=parse_date(val("resource_start[]", i)),
                 end_date=parse_date(val("resource_end[]", i)),
                 responsibilities=val("resource_responsibilities[]", i),
@@ -680,6 +689,17 @@ def health():
 def ensure_schema():
     """Create missing tables and add new nullable columns to existing demo databases."""
     db.create_all()
+    # Normalize legacy resource allocation values stored as 0-100 percentages
+    # into a 0-1 ratio (e.g. 100% -> 1.0). Values already <= 1 are left unchanged.
+    try:
+        db.session.execute(db.text(
+            "UPDATE sow_resources SET allocation_percent = allocation_percent / 100 "
+            "WHERE allocation_percent > 1 AND allocation_percent <= 100"
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     inspector = db.inspect(db.engine)
     if "sow_resources" in inspector.get_table_names():
         existing = {column["name"] for column in inspector.get_columns("sow_resources")}

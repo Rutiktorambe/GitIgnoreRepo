@@ -36,17 +36,31 @@
       <div class="grid">
         <label>Project code *<input required name="project_code" value="{{ data.project_code }}"></label>
         <label>Project name *<input required name="project_name" value="{{ data.project_name }}"></label>
-        <label>Project team<input name="project_team" value="{{ data.project_team }}"></label>
+        <label>Project team
+          <select name="project_team">
+            <option value="">Select team</option>
+            {% for team in ['Analytics', 'Capital', 'Cio-uk', 'Canada CIO', 'Finance'] %}
+            <option value="{{ team }}" {% if data.project_team == team %}selected{% endif %}>{{ team }}</option>
+            {% endfor %}
+          </select>
+        </label>
         <label>Type of project<input name="project_type" value="{{ data.project_type }}"></label>
         <label>Project start date<input type="date" name="start_date" value="{{ data.start_date }}"></label>
         <label>Project end date<input type="date" name="end_date" value="{{ data.end_date }}"></label>
-        <label>No. of FTEs<input type="number" step="0.01" name="fte_count" value="{{ data.fte_count }}"></label>
+        <label>No. of FTEs <small class="field-hint">(calculated from resource allocations)</small><input type="number" min="0" step="0.01" name="fte_count" id="fte-count" value="{{ data.fte_count if data.fte_count not in [None, ''] else '0' }}" readonly aria-readonly="true"></label>
         <label>Region<input name="region" value="{{ data.region }}"></label>
         <label>Client name<input name="client_name" value="{{ data.client_name }}"></label>
         <label>Business lead<input name="business_lead" value="{{ data.business_lead }}"></label>
         <label>Business lead designation<input name="business_lead_designation" value="{{ data.business_lead_designation }}"></label>
         <label>Business lead email<input type="email" name="business_lead_email" value="{{ data.business_lead_email }}"></label>
-        <label>Billing model<input name="billing_model" value="{{ data.billing_model }}"></label>
+        <label>Billing model
+          <select name="billing_model">
+            <option value="">Select billing model</option>
+            {% for model in ['FIXED - FTE', 'Man Days'] %}
+            <option value="{{ model }}" {% if data.billing_model == model %}selected{% endif %}>{{ model }}</option>
+            {% endfor %}
+          </select>
+        </label>
         <label>Change effective date<input type="date" name="change_effective_date" value="{{ data.change_effective_date }}"></label>
       </div>
     </details>
@@ -54,14 +68,33 @@
     <details class="panel collapsible" id="cost-billing" open><summary class="section-heading"><span class="section-number">02</span><div><h3>Cost &amp; billing</h3><p>Estimated project and travel costs</p></div><span class="collapse-indicator">⌄</span></summary>
       <div class="grid">
         <label>Already part of agreed FTE arrangement?
-          <select name="already_agreed_fte"><option value="">Select value</option>{% for choice in agreed_fte_choices %}<option value="{{ choice }}" {% if data.already_agreed_fte == choice %}selected{% endif %}>{{ choice }}</option>{% endfor %}</select>
+          <select name="already_agreed_fte">
+            <option value="">Select value</option>
+            {% for choice in ['Yes', 'No'] %}
+            <option value="{{ choice }}" {% if data.already_agreed_fte == choice %}selected{% endif %}>{{ choice }}</option>
+            {% endfor %}
+          </select>
         </label>
         <label>Project cost (INR)<input type="number" step="0.01" name="project_cost_inr" value="{{ data.project_cost_inr }}"></label>
-        <label>Billing currency<input name="billing_currency" value="{{ data.billing_currency }}"></label>
+        <label>Billing currency
+          <select name="billing_currency">
+            <option value="">Select currency</option>
+            {% for currency in ['INR', 'USD', 'GBP', 'EURO'] %}
+            <option value="{{ currency }}" {% if data.billing_currency == currency %}selected{% endif %}>{{ currency }}</option>
+            {% endfor %}
+          </select>
+        </label>
         <label>FX rate<input type="number" step="0.0001" name="fx_rate" value="{{ data.fx_rate }}"></label>
         <label>Project amount in FX<input type="number" step="0.01" name="project_cost_fx" value="{{ data.project_cost_fx }}"></label>
         <label>Travel cost (INR)<input type="number" step="0.01" name="travel_cost_inr" value="{{ data.travel_cost_inr }}"></label>
-        <label>Travel currency<input name="travel_currency" value="{{ data.travel_currency }}"></label>
+        <label>Travel currency
+          <select name="travel_currency">
+            <option value="">Select currency</option>
+            {% for currency in ['INR', 'USD', 'GBP', 'EURO'] %}
+            <option value="{{ currency }}" {% if data.travel_currency == currency %}selected{% endif %}>{{ currency }}</option>
+            {% endfor %}
+          </select>
+        </label>
         <label>Travel FX rate<input type="number" step="0.0001" name="travel_fx_rate" value="{{ data.travel_fx_rate }}"></label>
         <label>Travel amount in FX<input type="number" step="0.01" name="travel_cost_fx" value="{{ data.travel_cost_fx }}"></label>
       </div>
@@ -110,7 +143,7 @@
 </main>
 </div>
 <template id="resource-row-template"><tr>
-  <td><input name="resource_name[]" aria-label="Resource name" placeholder="Full name"></td><td><select name="resource_level[]" aria-label="Billing level"><option value="">Select level</option>{% for level in billing_levels %}<option value="{{ level }}">{{ level }}</option>{% endfor %}</select></td><td><select name="resource_team[]" aria-label="Team"><option value="">Select team</option>{% for team in resource_teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select></td><td><input type="number" min="0" max="100" step="0.01" name="resource_allocation[]" aria-label="Allocation percent"></td><td><input type="date" name="resource_start[]" aria-label="Resource start"></td><td><input type="date" name="resource_end[]" aria-label="Resource end"></td><td><input name="resource_responsibilities[]" aria-label="Responsibilities" placeholder="Role and responsibilities"></td><td><button type="button" class="remove-row" aria-label="Remove resource">×</button></td>
+  <td><input name="resource_name[]" aria-label="Resource name" placeholder="Full name"></td><td><select name="resource_level[]" aria-label="Billing level"><option value="">Select level</option>{% for level in billing_levels %}<option value="{{ level }}">{{ level }}</option>{% endfor %}</select></td><td><select name="resource_team[]" aria-label="Team"><option value="">Select team</option>{% for team in resource_teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select></td><td><input type="number" min="0" max="100" step="0.01" name="resource_allocation[]" value="100" aria-label="Allocation percent"></td><td><input type="date" name="resource_start[]" aria-label="Resource start"></td><td><input type="date" name="resource_end[]" aria-label="Resource end"></td><td><input name="resource_responsibilities[]" aria-label="Responsibilities" placeholder="Role and responsibilities"></td><td><button type="button" class="remove-row" aria-label="Remove resource">×</button></td>
 </tr></template>
 <template id="milestone-row-template"><tr>
   <td><input name="milestone_name[]" aria-label="Milestone" placeholder="Milestone name"></td><td><input type="number" min="0" name="milestone_points[]" aria-label="Action points"></td><td><input type="date" name="milestone_start[]" aria-label="Milestone start"></td><td><input type="date" name="milestone_end[]" aria-label="Milestone end"></td><td><input name="milestone_description[]" aria-label="Description" placeholder="Description"></td><td><button type="button" class="remove-row" aria-label="Remove milestone">×</button></td>

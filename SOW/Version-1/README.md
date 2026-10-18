@@ -50,3 +50,21 @@ Add authentication/authorization, CSRF protection, database migrations, stronger
 - The SOW narrative editor uses a lightweight browser-native `contenteditable` editor and toolbar.
 - No Quill CDN stylesheet or JavaScript is loaded, and the editor does not require an external network connection.
 - Formatting controls include bold, italic, underline, headings, ordered/bulleted lists, block quotes, and clear formatting.
+
+
+## Fixed form dropdowns
+
+- Project team: Analytics, Capital, Cio-uk, Canada CIO, Finance.
+- Already part of agreed FTE arrangement: Yes, No.
+- Billing currency and travel currency: INR, USD, GBP, EURO.
+- Billing model: FIXED - FTE, Man Days.
+- New SOW FTE count defaults to 0.
+- Resource allocation is entered as a percentage (100 means 100%). If your database stores allocation as a ratio (1.0 means 100%), conversion must be applied consistently in form handling and PDF display.
+
+
+## Automatic FTE calculation
+
+- The No. of FTEs field is read-only and recalculates when a resource is added, removed, or its Allocation % changes.
+- Total FTE = sum of resource allocation percentages / 100.
+- Examples: one 100% resource = 1.00 FTE; one 50% resource = 0.50 FTE; two 50% resources = 1.00 FTE.
+- The server recalculates the total from submitted allocation values when saving, so it does not trust a client-side FTE value.
