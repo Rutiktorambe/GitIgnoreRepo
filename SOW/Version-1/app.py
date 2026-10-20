@@ -75,6 +75,7 @@ class SowProject(db.Model):
     declarations = db.Column(db.Text)
     sow_version = db.Column(db.String(30), nullable=False, default="1.0")
     change_summary = db.Column(db.Text)
+    milestones_json = db.Column(db.Text, nullable=False, default="[]")
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -82,10 +83,15 @@ class SowProject(db.Model):
         "SowResource", backref="project", cascade="all, delete-orphan",
         order_by="SowResource.sort_order"
     )
-    milestones = db.relationship(
-        "SowMilestone", backref="project", cascade="all, delete-orphan",
-        order_by="SowMilestone.sort_order"
-    )
+
+    @property
+    def milestones(self):
+        """Read milestones stored as JSON in sow_projects."""
+        try:
+            rows = json.loads(self.milestones_json or "[]")
+        except (TypeError, ValueError):
+            rows = []
+        return [SimpleNamespace(**row) for row in rows]
 
 
 class SowResource(db.Model):
@@ -96,23 +102,10 @@ class SowResource(db.Model):
     name = db.Column(db.String(150), nullable=False)
     billing_level = db.Column(db.String(100))
     team = db.Column(db.String(100))
-    allocation_percent = db.Column(db.Numeric(6, 4), default=1.0)
+    allocation_percent = db.Column(db.Numeric(6, 2), default=100)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     responsibilities = db.Column(db.String(500))
-    sort_order = db.Column(db.Integer, default=0)
-
-
-class SowMilestone(db.Model):
-    __tablename__ = "sow_milestones"
-
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey("sow_projects.id"), nullable=False)
-    milestone = db.Column(db.String(150), nullable=False)
-    action_points = db.Column(db.Integer, default=1)
-    start_date = db.Column(db.Date)
-    end_date = db.Column(db.Date)
-    description = db.Column(db.String(500))
     sort_order = db.Column(db.Integer, default=0)
 
 
@@ -151,6 +144,9 @@ EMPTY_DATA = {
     "declarations": "",
 }
 
+# ============================================================
+# HELPERS: INPUT CONVERSION AND FORM DATA
+# ============================================================
 def parse_date(value):
     if not value:
         return None
@@ -158,16 +154,6 @@ def parse_date(value):
         return date.fromisoformat(value)
     except (ValueError, TypeError):
         return None
-
-
-def calculate_fte_from_allocations(form):
-    """Calculate total FTE from submitted resource allocation percentages."""
-    total_percent = Decimal("0")
-    for raw in form.getlist("resource_allocation[]"):
-        allocation = parse_decimal(raw)
-        if allocation is not None and allocation > 0:
-            total_percent += allocation
-    return (total_percent / Decimal("100")).quantize(Decimal("0.01"))
 
 
 def parse_decimal(value):
@@ -193,13 +179,14 @@ def database_choices(model, column_name):
 
 def form_context(data=None, resources=None, milestones=None, edit_project_id="", editing_project=None):
     return {
-        "data": data if data is not None else {**EMPTY_DATA, "fte_count": "0"},
+        "data": data if data is not None else EMPTY_DATA.copy(),
         "resources": resources if resources is not None else [],
         "milestones": milestones if milestones is not None else [],
         "edit_project_id": edit_project_id,
         "editing_project": editing_project,
         "billing_levels": database_choices(SowResource, "billing_level"),
         "resource_teams": database_choices(SowResource, "team"),
+        "agreed_fte_choices": database_choices(SowProject, "already_agreed_fte"),
     }
 
 
@@ -230,6 +217,9 @@ def clean_rich_text(value):
 
 
 
+# ============================================================
+# ROUTES: NEW SOW AND SAVED SOW PAGES
+# ============================================================
 @app.route("/")
 def index():
     return render_template("form.html", **form_context())
@@ -250,14 +240,15 @@ def edit_project(project_id):
         if isinstance(value, (date, datetime)):
             value = value.strftime("%Y-%m-%d")
         data[key] = "" if value is None else str(value)
-    resources = [(r.name, r.billing_level or "", str((r.allocation_percent * 100) if r.allocation_percent is not None else 100),
+    resources = [(r.name, r.billing_level or "", str(r.allocation_percent if r.allocation_percent is not None else 100),
                   r.start_date.strftime("%Y-%m-%d") if r.start_date else "",
                   r.end_date.strftime("%Y-%m-%d") if r.end_date else "", r.responsibilities or "", r.team or "")
                  for r in saved.resources]
-    milestones = [(m.milestone, str(m.action_points if m.action_points is not None else 1),
-                   m.start_date.strftime("%Y-%m-%d") if m.start_date else "",
-                   m.end_date.strftime("%Y-%m-%d") if m.end_date else "", m.description or "")
-                  for m in saved.milestones]
+    milestones = [
+        (m.milestone, str(m.action_points if m.action_points is not None else 1),
+         m.start_date or "", m.end_date or "", m.description or "")
+        for m in saved.milestones
+    ]
     return render_template("form.html", **form_context(
         data=data, resources=resources, milestones=milestones,
         edit_project_id=saved.id, editing_project=saved
@@ -265,28 +256,8 @@ def edit_project(project_id):
 
 
 
-def _draft_values():
-    """Read the pending preview draft from server-side storage."""
-    token = session.get("sow_draft_token")
-    if not token:
-        return {}
-    draft_path = os.path.join(app.instance_path, "drafts", f"{token}.json")
-    if not os.path.isfile(draft_path):
-        return {}
-    try:
-        with open(draft_path, "r", encoding="utf-8") as draft_file:
-            return json.load(draft_file)
-    except (OSError, ValueError):
-        return {}
-
-
-def _draft_scalar_values(draft):
-    return {key: (values[-1] if isinstance(values, list) and values else "")
-            for key, values in draft.items()}
-
-
 def _preview_object(draft):
-    values = _draft_scalar_values(draft)
+    values = {key: (items[-1] if isinstance(items, list) and items else "") for key, items in draft.items()}
     data = EMPTY_DATA.copy()
     data.update(values)
 
@@ -323,6 +294,7 @@ def _preview_object(draft):
 
     return SimpleNamespace(
         id="PREVIEW", created_at=datetime.now(),
+        edit_project_id=values.get("edit_project_id", ""),
         project_code=values.get("project_code", ""),
         project_name=values.get("project_name", ""),
         project_team=values.get("project_team", ""),
@@ -361,145 +333,66 @@ def _preview_object(draft):
     )
 
 
+# ============================================================
+# PDF OPERATION: BUILD THE SOW PDF
+# ============================================================
 def generate_project_pdf(project):
-    """Generate a PDF on the server and return its filename."""
+    """Generate the saved PDF from the same HTML template used by the print view.
+
+    Chromium applies the page's actual CSS print rules, so the saved PDF stays
+    visually aligned with /projects/<id>/print instead of using a separate layout.
+    Requires Playwright and its Chromium browser (see README.md).
+    """
+    from playwright.sync_api import sync_playwright
+
     output_dir = os.path.join(app.instance_path, "generated_pdfs")
     os.makedirs(output_dir, exist_ok=True)
     safe_code = re.sub(r"[^A-Za-z0-9_-]+", "_", project.project_code or "SOW")
     filename = f"{safe_code}_{project.id}.pdf"
     output_path = os.path.join(output_dir, filename)
 
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="SowTitle", parent=styles["Title"], fontName="Helvetica-Bold",
-                              fontSize=19, leading=23, textColor=colors.HexColor("#35245e"), alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name="SowSection", parent=styles["Heading2"], fontSize=12, leading=15,
-                              textColor=colors.HexColor("#35245e"), spaceBefore=10, spaceAfter=6))
-    styles.add(ParagraphStyle(name="SowBody", parent=styles["BodyText"], fontSize=8.5, leading=11, spaceAfter=4))
-    styles.add(ParagraphStyle(name="SowSmall", parent=styles["BodyText"], fontSize=7, leading=9))
-    story = [
-        Paragraph("STATEMENT OF WORK", styles["SowSmall"]),
-        Paragraph(html.escape(project.project_name or "Untitled SOW"), styles["SowTitle"]),
-        Paragraph(f"Project code: {html.escape(str(project.project_code or '—'))} &nbsp; | &nbsp; Region: {html.escape(str(project.region or '—'))}", styles["SowBody"]),
-        Spacer(1, 4*mm),
-    ]
+    # Render the exact same template as the print page. The toolbar is excluded
+    # by the existing .no-print CSS under @media print.
+    html_doc = render_template(
+        "print.html", project=project, preview_mode=False,
+        pdf_exists=False, pdf_filename=filename
+    )
+    base_tag = f'<base href="{html.escape(request.url_root, quote=True)}">'
+    css_path = os.path.join(app.static_folder, "style.css")
+    with open(css_path, "r", encoding="utf-8") as css_file:
+        css_text = css_file.read()
+    html_doc = re.sub(
+        r'<link\s+rel="stylesheet"\s+href="[^"]+"\s*/?>',
+        "<style>" + css_text + "</style>", html_doc, count=1, flags=re.I
+    )
+    # The print document is static; editor/toolbar JavaScript is not needed in the PDF.
+    html_doc = re.sub(r'<script[^>]*src="[^"]*app\.js"[^>]*></script>', "", html_doc, flags=re.I)
+    html_doc = html_doc.replace("</head>", base_tag + "</head>", 1)
 
-    def fmt(value):
-        if value is None or str(value).strip() == "":
-            return "—"
-        if isinstance(value, (date, datetime)):
-            return value.strftime("%d-%b-%Y")
-        return str(value)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.set_content(html_doc, wait_until="networkidle")
+        page.emulate_media(media="print")
+        # Use the exact @page declaration in style.css (A4 landscape, 12mm).
+        # Do not pass format or margin overrides here: those can override the
+        # browser print layout and cause a portrait/spacing mismatch.
+        page.evaluate("document.fonts.ready")
+        page.pdf(
+            path=output_path,
+            print_background=True,
+            prefer_css_page_size=True,
+            display_header_footer=False,
+            scale=1,
+        )
+        browser.close()
 
-    def add_section(title, rows):
-        story.append(Paragraph(html.escape(title), styles["SowSection"]))
-        table = Table([[Paragraph(f"<b>{html.escape(str(k))}</b>", styles["SowSmall"]),
-                        Paragraph(html.escape(fmt(v)), styles["SowSmall"])] for k, v in rows],
-                      colWidths=[48*mm, 220*mm], repeatRows=0)
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#f0edf8")),
-            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
-            ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("LEFTPADDING", (0,0), (-1,-1), 5), ("RIGHTPADDING", (0,0), (-1,-1), 5),
-            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ]))
-        story.append(table)
-        story.append(Spacer(1, 2*mm))
-
-    def add_rich_section(title, value):
-        if not value:
-            return
-        story.append(Paragraph(html.escape(title), styles["SowSection"]))
-        # ReportLab Paragraph supports a safe subset of HTML; sanitize and convert common tags.
-        content = value.replace("<p", "<para").replace("</p>", "</para>")
-        content = re.sub(r'<(h[23])[^>]*>', '<b>', content, flags=re.I)
-        content = re.sub(r'</h[23]>', '</b><br/>', content, flags=re.I)
-        content = re.sub(r'<span[^>]*>', '', content, flags=re.I).replace("</span>", "")
-        content = content.replace("<div>", "").replace("</div>", "<br/>")
-        content = content.replace("<blockquote>", "<i>").replace("</blockquote>", "</i><br/>")
-        content = re.sub(r"""<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)</a>""", r'<link href="\1" color="blue">\2</link>', content, flags=re.I)
-        # Keep only tags ReportLab can parse, stripping style attributes and Quill classes.
-        content = re.sub(r'<(p|para|strong|b|em|i|u|ol|ul|li|br)(?:\s+[^>]*)?>', lambda m: "<" + m.group(1).lower() + ">", content, flags=re.I)
-        content = re.sub(r'<(?!/?(?:para|strong|b|em|i|u|ol|ul|li|br|link)\b)[^>]+>', '', content, flags=re.I)
-        content = content.replace("&nbsp;", " ").replace("&#39;", "'")
-        if not content.strip():
-            return
-        try:
-            story.append(Paragraph(content, styles["SowBody"]))
-        except Exception:
-            plain = re.sub(r"<[^>]+>", " ", content)
-            story.append(Paragraph(html.escape(plain), styles["SowBody"]))
-
-    add_section("01 · Project details", [
-        ("Project code", project.project_code), ("Project name", project.project_name),
-        ("Project team", project.project_team), ("Project type", project.project_type),
-        ("Start date", project.start_date), ("End date", project.end_date),
-        ("No. of FTEs", project.fte_count), ("Region", project.region),
-        ("Client name", project.client_name), ("Business lead", project.business_lead),
-        ("Lead designation", project.business_lead_designation), ("Lead email", project.business_lead_email),
-        ("Billing model", project.billing_model), ("Change effective date", project.change_effective_date),
-        ("SOW version", getattr(project, "sow_version", "1.0")),
-    ])
-    add_rich_section("Change summary", getattr(project, "change_summary", ""))
-    add_section("02 · Cost & billing", [
-        ("Project cost (INR)", project.project_cost_inr), ("Billing currency", project.billing_currency),
-        ("FX rate", project.fx_rate), ("Project amount (FX)", project.project_cost_fx),
-        ("Travel cost (INR)", project.travel_cost_inr), ("Travel currency", project.travel_currency),
-        ("Travel FX rate", project.travel_fx_rate), ("Travel amount (FX)", project.travel_cost_fx),
-        ("Already agreed FTE arrangement", project.already_agreed_fte),
-    ])
-
-    def add_grid_table(title, headers, rows):
-        story.append(Paragraph(html.escape(title), styles["SowSection"]))
-        data = [[Paragraph(f"<b>{html.escape(str(h))}</b>", styles["SowSmall"]) for h in headers]]
-        for row in rows:
-            data.append([Paragraph(html.escape(fmt(v)), styles["SowSmall"]) for v in row])
-        if len(data) == 1:
-            data.append([Paragraph("No records provided", styles["SowSmall"])] + [Paragraph("", styles["SowSmall"]) for _ in headers[1:]])
-        widths = [268*mm / len(headers)] * len(headers)
-        table = Table(data, colWidths=widths, repeatRows=1)
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#35245e")),
-            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
-            ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("LEFTPADDING", (0,0), (-1,-1), 4), ("RIGHTPADDING", (0,0), (-1,-1), 4),
-            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ]))
-        story.append(table)
-        story.append(Spacer(1, 2*mm))
-
-    add_grid_table("03 · Resource plan",
-        ["Name", "Billing level", "Team", "Allocation", "Start", "End", "Responsibilities"],
-        [[r.name, r.billing_level, r.team, f"{fmt((r.allocation_percent or 0) * 100)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources])
-    add_grid_table("04 · Milestones & activities",
-        ["Milestone", "Action points", "Start", "End", "Description"],
-        [[m.milestone, m.action_points, m.start_date, m.end_date, m.description] for m in project.milestones])
-
-    for title, value in [
-        ("05 · Executive summary", project.executive_summary), ("Background", project.background),
-        ("In scope", project.in_scope), ("Out of scope", project.out_of_scope),
-        ("06 · Dependencies & risks", project.dependencies_risks), ("Required skills", project.required_skills),
-        ("Software required", project.software_required), ("Other notes", project.other_notes),
-        ("Declarations", project.declarations),
-    ]:
-        add_rich_section(title, value)
-
-    def add_page_number(canvas, doc):
-        canvas.saveState()
-        canvas.setFont("Helvetica", 7)
-        canvas.setFillColor(colors.HexColor("#777777"))
-        canvas.drawString(14*mm, 7*mm, f"SOW {project.project_code} · Record {project.id}")
-        canvas.drawRightString(283*mm, 7*mm, f"Page {doc.page}")
-        canvas.restoreState()
-
-    doc = SimpleDocTemplate(output_path, pagesize=landscape(A4),
-                            rightMargin=14*mm, leftMargin=14*mm,
-                            topMargin=12*mm, bottomMargin=13*mm,
-                            title=f"{project.project_code} - {project.project_name}")
-    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
     return filename
 
 
+# ============================================================
+# ROUTE: PREVIEW ONLY (DOES NOT COMMIT TO DATABASE)
+# ============================================================
 @app.route("/preview", methods=["POST"])
 def preview_project():
     # Store the potentially large form server-side; only keep a short token in the session cookie.
@@ -514,17 +407,39 @@ def preview_project():
     return render_template("print.html", project=project, preview_mode=True)
 
 
-@app.route("/projects", methods=["POST"])
-def create_project():
-    # The confirmation is a required server-side gate, not just browser validation.
+# ============================================================
+# ROUTES: FINAL SAVE (HTTP layer only)
+# ============================================================
+@app.route("/projects/new", methods=["POST"])
+def create_new_sow():
+    return save_sow_to_database(project_id=None)
+
+
+@app.route("/projects/<int:project_id>/update", methods=["POST"])
+def update_existing_sow(project_id):
+    return save_sow_to_database(project_id=project_id)
+
+
+# ============================================================
+# DATABASE OPERATION: CREATE OR UPDATE THE SOW AND ITS RESOURCES
+# ============================================================
+def save_sow_to_database(project_id=None):
+    # New and edit submissions have separate URLs but share this save implementation.
     # Nothing is added to the database until both fields pass validation.
     draft_token = session.get("sow_draft_token")
-    draft = _draft_values()
+    draft = {}
+    draft_path = os.path.join(app.instance_path, "drafts", f"{draft_token}.json") if draft_token else ""
+    if draft_path and os.path.isfile(draft_path):
+        try:
+            with open(draft_path, "r", encoding="utf-8") as draft_file:
+                draft = json.load(draft_file)
+        except (OSError, ValueError):
+            draft = {}
     if not draft or not draft_token:
         flash("Your preview has expired. Please review the SOW again before saving.", "error")
         return redirect(url_for("index"))
 
-    values = _draft_scalar_values(draft)
+    values = {key: (items[-1] if isinstance(items, list) and items else "") for key, items in draft.items()}
     data = EMPTY_DATA.copy()
     data.update(values)
 
@@ -544,8 +459,15 @@ def create_project():
             modal_open=True,
         ), 400
 
-    edit_project_id = (data.get("edit_project_id") or "").strip()
-    existing_project = db.get_or_404(SowProject, int(edit_project_id)) if edit_project_id else None
+    draft_project_id = (data.get("edit_project_id") or "").strip()
+    if project_id is None and draft_project_id:
+        flash("This draft belongs to an existing SOW. Please use the update route.", "error")
+        return redirect(url_for("edit_project", project_id=int(draft_project_id)))
+    if project_id is not None and (not draft_project_id or str(project_id) != draft_project_id):
+        flash("The SOW being updated does not match this draft. Please preview it again.", "error")
+        return redirect(url_for("edit_project", project_id=project_id))
+    edit_project_id = str(project_id) if project_id is not None else ""
+    existing_project = db.get_or_404(SowProject, project_id) if project_id is not None else None
     project = existing_project or SowProject()
     project.project_code = data.get("project_code", "").strip()
     project.project_name = data.get("project_name", "").strip()
@@ -553,7 +475,7 @@ def create_project():
     project.project_type = data.get("project_type")
     project.start_date = parse_date(data.get("start_date"))
     project.end_date = parse_date(data.get("end_date"))
-    project.fte_count = calculate_fte_from_allocations(request.form)
+    project.fte_count = parse_decimal(data.get("fte_count"))
     project.region = data.get("region")
     project.client_name = data.get("client_name")
     project.business_lead = data.get("business_lead")
@@ -583,7 +505,6 @@ def create_project():
     project.change_summary = clean_rich_text(confirmation_summary)
     if existing_project is not None:
         existing_project.resources.clear()
-        existing_project.milestones.clear()
 
     try:
         db.session.add(project)
@@ -600,13 +521,15 @@ def create_project():
                 name=name.strip(),
                 billing_level=val("resource_level[]", i),
                 team=val("resource_team[]", i),
-                allocation_percent=(parse_decimal(val("resource_allocation[]", i, "100")) / Decimal("100")) if parse_decimal(val("resource_allocation[]", i, "100")) is not None else Decimal("1"),
+                allocation_percent=parse_decimal(val("resource_allocation[]", i, "100")),
                 start_date=parse_date(val("resource_start[]", i)),
                 end_date=parse_date(val("resource_end[]", i)),
                 responsibilities=val("resource_responsibilities[]", i),
                 sort_order=i,
             ))
 
+        # Milestones live in sow_projects.milestones_json; no third table is used.
+        milestone_rows = []
         for i, name in enumerate(draft.get("milestone_name[]", [])):
             if not name.strip():
                 continue
@@ -614,13 +537,15 @@ def create_project():
                 action_points = int(val("milestone_points[]", i, "0") or 0)
             except ValueError:
                 action_points = 0
-            project.milestones.append(SowMilestone(
-                milestone=name.strip(), action_points=action_points,
-                start_date=parse_date(val("milestone_start[]", i)),
-                end_date=parse_date(val("milestone_end[]", i)),
-                description=val("milestone_description[]", i),
-                sort_order=i,
-            ))
+            milestone_rows.append({
+                "milestone": name.strip(),
+                "action_points": action_points,
+                "start_date": val("milestone_start[]", i),
+                "end_date": val("milestone_end[]", i),
+                "description": val("milestone_description[]", i),
+                "sort_order": i,
+            })
+        project.milestones_json = json.dumps(milestone_rows, ensure_ascii=False)
 
         # Generate PDF before DB commit. Restore the old PDF if an update cannot commit.
         pdf_dir = os.path.join(app.instance_path, "generated_pdfs")
@@ -663,6 +588,9 @@ def create_project():
                                                             editing_project=existing_project)), 500
 
 
+# ============================================================
+# ROUTES: VIEW AND DOWNLOAD SAVED SOW
+# ============================================================
 @app.route("/projects/<int:project_id>/print")
 def print_project(project_id):
     project = db.get_or_404(SowProject, project_id)
@@ -675,7 +603,9 @@ def print_project(project_id):
 @app.route("/projects/<int:project_id>/pdf")
 def download_project_pdf(project_id):
     project = db.get_or_404(SowProject, project_id)
-    pdf_filename = f"{re.sub(r'[^A-Za-z0-9_-]+', '_', project.project_code or 'SOW')}_{project.id}.pdf"
+    # Re-render on download so older PDFs created by the previous layout code
+    # cannot be served after a template/CSS update.
+    pdf_filename = generate_project_pdf(project)
     return send_from_directory(os.path.join(app.instance_path, "generated_pdfs"),
                                pdf_filename, as_attachment=True,
                                download_name=pdf_filename)
@@ -687,40 +617,58 @@ def health():
 
 
 def ensure_schema():
-    """Create missing tables and add new nullable columns to existing demo databases."""
+    """Create the two application tables and migrate legacy milestone rows if present."""
     db.create_all()
-    # Normalize legacy resource allocation values stored as 0-100 percentages
-    # into a 0-1 ratio (e.g. 100% -> 1.0). Values already <= 1 are left unchanged.
-    try:
-        db.session.execute(db.text(
-            "UPDATE sow_resources SET allocation_percent = allocation_percent / 100 "
-            "WHERE allocation_percent > 1 AND allocation_percent <= 100"
-        ))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-
     inspector = db.inspect(db.engine)
-    if "sow_resources" in inspector.get_table_names():
-        existing = {column["name"] for column in inspector.get_columns("sow_resources")}
-        if "team" not in existing:
+    tables = set(inspector.get_table_names())
+
+    if "sow_resources" in tables:
+        columns = {c["name"] for c in inspector.get_columns("sow_resources")}
+        if "team" not in columns:
             with db.engine.begin() as conn:
                 conn.execute(text("ALTER TABLE sow_resources ADD COLUMN team VARCHAR(100) NULL"))
-    if "sow_projects" in inspector.get_table_names():
-        existing = {column["name"] for column in inspector.get_columns("sow_projects")}
-        dialect = db.engine.dialect.name
-        for column_name, column_sql in [
+
+    if "sow_projects" in tables:
+        columns = {c["name"] for c in inspector.get_columns("sow_projects")}
+        for name, sql_type in [
             ("sow_version", "VARCHAR(30) NOT NULL DEFAULT '1.0'"),
             ("change_summary", "TEXT NULL"),
+            ("milestones_json", "TEXT NULL"),
         ]:
-            if column_name not in existing:
+            if name not in columns:
                 with db.engine.begin() as conn:
-                    conn.execute(text(f"ALTER TABLE sow_projects ADD COLUMN {column_name} {column_sql}"))
+                    conn.execute(text(f"ALTER TABLE sow_projects ADD COLUMN {name} {sql_type}"))
+
+    # Migrate old milestone rows to JSON before dropping the legacy third table.
+    if "sow_milestones" in set(db.inspect(db.engine).get_table_names()):
+        with db.engine.begin() as conn:
+            projects = conn.execute(text("SELECT id, milestones_json FROM sow_projects")).mappings().all()
+            for project_row in projects:
+                current = project_row["milestones_json"]
+                if current and current not in ("", "[]"):
+                    continue
+                old_rows = conn.execute(text(
+                    "SELECT milestone, action_points, start_date, end_date, description, sort_order "
+                    "FROM sow_milestones WHERE project_id = :pid ORDER BY sort_order, id"
+                ), {"pid": project_row["id"]}).mappings().all()
+                rows = [{
+                    "milestone": row["milestone"] or "",
+                    "action_points": row["action_points"] if row["action_points"] is not None else 1,
+                    "start_date": str(row["start_date"] or "")[:10],
+                    "end_date": str(row["end_date"] or "")[:10],
+                    "description": row["description"] or "",
+                    "sort_order": row["sort_order"] if row["sort_order"] is not None else 0,
+                } for row in old_rows]
+                if rows:
+                    conn.execute(text(
+                        "UPDATE sow_projects SET milestones_json = :data WHERE id = :pid"
+                    ), {"data": json.dumps(rows, ensure_ascii=False), "pid": project_row["id"]})
+            conn.execute(text("DROP TABLE sow_milestones"))
 
 
 @app.before_request
-def initialize_schema_for_demo():
-    # Keeps older local SQLite databases usable after adding fields to the model.
+def initialize_database_schema():
+    # Keeps the two-table schema current and migrates legacy milestone rows once.
     ensure_schema()
 
 

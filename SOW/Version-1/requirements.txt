@@ -5,3 +5,4 @@ python-dotenv>=1.0,<2.0
 pyodbc>=5.0,<6.0
 bleach>=6.1,<7.0
 reportlab>=4.0,<5.0
+playwright>=1.50,<2.0

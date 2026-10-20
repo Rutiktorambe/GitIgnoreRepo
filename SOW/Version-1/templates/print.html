@@ -12,7 +12,7 @@
         <h2 id="confirm-title">Confirm SOW submission</h2>
         <p class="modal-intro">Confirm the project identity and version details before the record and PDF are created.</p>
         {% if confirmation_error|default('') %}<p class="form-error" role="alert">{{ confirmation_error }}</p>{% endif %}
-        <form action="{{ url_for('create_project') }}" method="post" id="final-save-form">
+        <form action="{{ url_for('update_existing_sow', project_id=(project.edit_project_id|int)) if project.edit_project_id else url_for('create_new_sow') }}" method="post" id="final-save-form">
           <label>Project code<input name="project_code_confirm" value="{{ project.project_code }}" readonly required></label>
           <label>SOW version<input name="sow_version" value="{{ request.form.get('sow_version', project.sow_version|default('')) }}" required maxlength="30" placeholder="e.g. 1.0 or 1.1"></label>
           <label>Change summary<textarea name="change_summary" rows="4" placeholder="Describe what changed in this SOW version…" required>{{ request.form.get('change_summary', '') }}</textarea></label>

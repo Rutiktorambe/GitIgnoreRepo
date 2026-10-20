@@ -1,48 +1,18 @@
 document.addEventListener("DOMContentLoaded", () => {
   const resourceBody = document.querySelector("#resources-table tbody");
   const milestoneBody = document.querySelector("#milestones-table tbody");
-  const fteInput = document.querySelector("#fte-count");
-
-  // FTE total is the sum of resource allocation percentages divided by 100.
-  // Examples: 100% = 1.0 FTE; 50% = 0.5 FTE; two 50% resources = 1.0 FTE.
-  const updateFteTotal = () => {
-    if (!fteInput || !resourceBody) return;
-    const total = [...resourceBody.querySelectorAll('input[name="resource_allocation[]"]')]
-      .reduce((sum, input) => {
-        const value = Number.parseFloat(input.value);
-        return sum + (Number.isFinite(value) && value > 0 ? value : 0);
-      }, 0) / 100;
-    fteInput.value = (Math.round(total * 100) / 100).toFixed(2).replace(/\\.00$/, "");
-  };
-  if (resourceBody) {
-    resourceBody.addEventListener("input", (event) => {
-      if (event.target.matches('input[name="resource_allocation[]"]')) updateFteTotal();
-    });
-    resourceBody.addEventListener("change", (event) => {
-      if (event.target.matches('input[name="resource_allocation[]"]')) updateFteTotal();
-    });
-  }
   document.querySelector("#add-resource").addEventListener("click", () => {
     resourceBody.appendChild(document.querySelector("#resource-row-template").content.cloneNode(true));
-    updateFteTotal();
   });
   document.querySelector("#add-milestone").addEventListener("click", () => {
     milestoneBody.appendChild(document.querySelector("#milestone-row-template").content.cloneNode(true));
   });
   document.addEventListener("click", (event) => {
     const button = event.target.closest(".remove-row");
-    if (button) {
-      const wasResource = Boolean(button.closest("#resources-table"));
-      button.closest("tr").remove();
-      if (wasResource) updateFteTotal();
-    }
+    if (button) button.closest("tr").remove();
   });
 
   // Section navigator: open the target section, scroll it into view, and mark active link.
-  const sowForm = document.querySelector("#sow-form");
-  sowForm?.addEventListener("reset", () => window.setTimeout(updateFteTotal, 0));
-  updateFteTotal();
-
   const navLinks = [...document.querySelectorAll(".nav-link")];
   navLinks.forEach((link) => {
     link.addEventListener("click", () => {
