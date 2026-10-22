@@ -31,7 +31,7 @@ mssql+pyodbc://USERNAME:PASSWORD@SERVER_NAME/DATABASE_NAME?driver=ODBC+Driver+18
 ## Database behaviour
 - `sow_projects` stores project details, commercial values, scope, risk, version, and change summary.
 - `sow_resources` stores resources related to a project.
-- `sow_milestones` stores project milestones and activities.
+- Milestones are stored as JSON in `sow_projects.milestones_json`.
 - New SOW forms start blank. Existing SOWs and their child rows are loaded from the configured database.
 - Billing-level, resource-team, and agreed-FTE dropdown options are derived from distinct values already stored in the database. If no values exist, those dropdowns remain blank until real records are saved.
 - `/sows` lists saved SOWs. Choose Edit to update the existing database record and synchronize its resource and milestone rows.
@@ -39,7 +39,7 @@ mssql+pyodbc://USERNAME:PASSWORD@SERVER_NAME/DATABASE_NAME?driver=ODBC+Driver+18
 - The app creates missing application tables and applies compatibility columns; it does not insert demo data. Back up an existing database before applying schema changes.
 
 ## Rich text and PDF
-Narrative fields use Quill rich-text editing. HTML is sanitized server-side before storage. The final submission generates a PDF in `instance/generated_pdfs/`; the saved SOW page provides a download link.
+Narrative fields use the built-in contenteditable editor (no Quill CDN). HTML is sanitized server-side before storage. The final submission generates a PDF with ReportLab in `instance/generated_pdfs/`; it does not launch Chromium or another browser executable. The PDF follows the print template section order, landscape A4 page size, red/white palette, project-detail grid, and table structure. ReportLab is not an HTML/CSS browser renderer, so a pixel-for-pixel match to the browser print preview cannot be guaranteed; compare the output with the preview before production use. The saved SOW page provides a download link.
 
 ## Production considerations
 Add authentication/authorization, CSRF protection, database migrations, stronger validation, and audit logging before deploying with real client or employee data.
@@ -52,19 +52,25 @@ Add authentication/authorization, CSRF protection, database migrations, stronger
 - Formatting controls include bold, italic, underline, headings, ordered/bulleted lists, block quotes, and clear formatting.
 
 
-## Fixed form dropdowns
+## Separate create and update endpoints
 
-- Project team: Analytics, Capital, Cio-uk, Canada CIO, Finance.
-- Already part of agreed FTE arrangement: Yes, No.
-- Billing currency and travel currency: INR, USD, GBP, EURO.
-- Billing model: FIXED - FTE, Man Days.
-- New SOW FTE count defaults to 0.
-- Resource allocation is entered as a percentage (100 means 100%). If your database stores allocation as a ratio (1.0 means 100%), conversion must be applied consistently in form handling and PDF display.
+- New SOW confirmation posts to `POST /projects/new`.
+- Existing SOW confirmation posts to `POST /projects/<project_id>/update`.
+- Both routes call one shared save implementation so PDF generation, validation, and transaction handling stay consistent without duplicating the save logic.
 
 
-## Automatic FTE calculation
+## Database design: exactly two application tables
 
-- The No. of FTEs field is read-only and recalculates when a resource is added, removed, or its Allocation % changes.
-- Total FTE = sum of resource allocation percentages / 100.
-- Examples: one 100% resource = 1.00 FTE; one 50% resource = 0.50 FTE; two 50% resources = 1.00 FTE.
-- The server recalculates the total from submitted allocation values when saving, so it does not trust a client-side FTE value.
+- `sow_projects` (`SowProject`): project details, billing, SOW text, version, change summary, and milestones stored in `milestones_json`.
+- `sow_resources` (`SowResource`): resource rows linked to a project through `project_id`.
+- The application no longer defines a `SowMilestone` model.
+- If an older database has `sow_milestones`, the startup migration copies its data into `sow_projects.milestones_json` and drops that legacy table. Back up the database before first launch after this update.
+
+## How to find the real database code in `app.py`
+
+- **ROUTES: NEW SOW AND SAVED SOW PAGES**: browser/page endpoints.
+- **ROUTE: PREVIEW ONLY**: saves a temporary draft file only; it does not commit a project to SQL.
+- **ROUTES: FINAL SAVE**: `create_new_sow()` and `update_existing_sow()` are separate HTTP routes.
+- **DATABASE OPERATION**: `save_sow_to_database()` is the function that inserts/updates `SowProject` and synchronizes `SowResource` rows.
+- **PDF OPERATION**: `generate_project_pdf()` creates the PDF file.
+- **DATABASE SCHEMA**: `ensure_schema()` creates the two model tables and migrates old milestone rows.

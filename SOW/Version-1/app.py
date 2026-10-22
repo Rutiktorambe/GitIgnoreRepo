@@ -337,13 +337,23 @@ def _preview_object(draft):
 # PDF OPERATION: BUILD THE SOW PDF
 # ============================================================
 def generate_project_pdf(project):
-    """Generate the saved PDF from the same HTML template used by the print view.
+    """Generate a print-ready SOW PDF with ReportLab (no browser executable).
 
-    Chromium applies the page's actual CSS print rules, so the saved PDF stays
-    visually aligned with /projects/<id>/print instead of using a separate layout.
-    Requires Playwright and its Chromium browser (see README.md).
+    Mirrors print.html's section order, landscape A4 page size, restrained
+    Intact-red/white palette, three-column project-detail grid, and table styling.
+    ReportLab does not render HTML/CSS, so this is a layout recreation rather than
+    a pixel-identical browser screenshot.
     """
-    from playwright.sync_api import sync_playwright
+    from xml.sax.saxutils import escape
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether,
+        HRFlowable
+    )
 
     output_dir = os.path.join(app.instance_path, "generated_pdfs")
     os.makedirs(output_dir, exist_ok=True)
@@ -351,42 +361,209 @@ def generate_project_pdf(project):
     filename = f"{safe_code}_{project.id}.pdf"
     output_path = os.path.join(output_dir, filename)
 
-    # Render the exact same template as the print page. The toolbar is excluded
-    # by the existing .no-print CSS under @media print.
-    html_doc = render_template(
-        "print.html", project=project, preview_mode=False,
-        pdf_exists=False, pdf_filename=filename
-    )
-    base_tag = f'<base href="{html.escape(request.url_root, quote=True)}">'
-    css_path = os.path.join(app.static_folder, "style.css")
-    with open(css_path, "r", encoding="utf-8") as css_file:
-        css_text = css_file.read()
-    html_doc = re.sub(
-        r'<link\s+rel="stylesheet"\s+href="[^"]+"\s*/?>',
-        "<style>" + css_text + "</style>", html_doc, count=1, flags=re.I
-    )
-    # The print document is static; editor/toolbar JavaScript is not needed in the PDF.
-    html_doc = re.sub(r'<script[^>]*src="[^"]*app\.js"[^>]*></script>', "", html_doc, flags=re.I)
-    html_doc = html_doc.replace("</head>", base_tag + "</head>", 1)
+    RED = colors.HexColor("#e31837")
+    RED_PALE = colors.HexColor("#fff0f2")
+    TEXT = colors.HexColor("#303030")
+    MUTED = colors.HexColor("#666666")
+    LINE = colors.HexColor("#e0e0e0")
+    FIELD = colors.HexColor("#f7f7f7")
+    WHITE = colors.white
 
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
-        page = browser.new_page()
-        page.set_content(html_doc, wait_until="networkidle")
-        page.emulate_media(media="print")
-        # Use the exact @page declaration in style.css (A4 landscape, 12mm).
-        # Do not pass format or margin overrides here: those can override the
-        # browser print layout and cause a portrait/spacing mismatch.
-        page.evaluate("document.fonts.ready")
-        page.pdf(
-            path=output_path,
-            print_background=True,
-            prefer_css_page_size=True,
-            display_header_footer=False,
-            scale=1,
-        )
-        browser.close()
+    base = getSampleStyleSheet()
+    styles = {
+        "eyebrow": ParagraphStyle("SowEyebrow", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=7, leading=9, textColor=RED, spaceAfter=4),
+        "title": ParagraphStyle("SowTitle", parent=base["Title"], fontName="Helvetica-Bold", fontSize=21, leading=25, alignment=TA_LEFT, textColor=TEXT, spaceAfter=5),
+        "subtitle": ParagraphStyle("SowSubtitle", parent=base["Normal"], fontSize=8, leading=11, textColor=MUTED),
+        "section": ParagraphStyle("SowSection", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=10, leading=13, textColor=TEXT, spaceBefore=8, spaceAfter=5, keepWithNext=True),
+        "label": ParagraphStyle("SowLabel", parent=base["Normal"], fontSize=6.5, leading=8, textColor=MUTED, spaceAfter=2),
+        "value": ParagraphStyle("SowValue", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=TEXT, wordWrap="CJK"),
+        "body": ParagraphStyle("SowBody", parent=base["BodyText"], fontSize=8, leading=11, textColor=TEXT, spaceAfter=3, wordWrap="CJK"),
+        "table": ParagraphStyle("SowTable", parent=base["Normal"], fontSize=6.2, leading=8, textColor=TEXT, wordWrap="CJK"),
+        "table_head": ParagraphStyle("SowTableHead", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=6.2, leading=8, textColor=WHITE, wordWrap="CJK"),
+        "copy_head": ParagraphStyle("SowCopyHead", parent=base["Heading3"], fontName="Helvetica-Bold", fontSize=8.5, leading=11, textColor=TEXT, spaceBefore=5, spaceAfter=3, keepWithNext=True),
+        "footer": ParagraphStyle("SowFooter", parent=base["Normal"], fontSize=6.5, leading=8, textColor=MUTED),
+    }
+    page_width, _ = landscape(A4)
+    usable_width = page_width - 24 * mm
+    story = []
 
+    def fmt(value):
+        if value is None or str(value).strip() == "":
+            return "—"
+        if isinstance(value, (date, datetime)):
+            return value.strftime("%d-%m-%Y")
+        return str(value)
+
+    def para(value, style="table"):
+        # Escape plain values so user-entered &, <, > characters don't break PDF markup.
+        return Paragraph(escape(fmt(value)).replace("\n", "<br/>"), styles[style])
+
+    # Header matching the print template's title, metadata, red rule, and SOW mark.
+    left_header = [
+        Paragraph("STATEMENT OF WORK", styles["eyebrow"]),
+        Paragraph(escape(project.project_name or "Untitled SOW"), styles["title"]),
+        Paragraph(
+            f"{escape(fmt(project.project_code))}  ·  {escape(fmt(project.region))}  ·  SOW Version {escape(fmt(getattr(project, 'sow_version', '1.0')))}",
+            styles["subtitle"]
+        ),
+    ]
+    mark = Table([[Paragraph("<b>SOW</b>", ParagraphStyle("SowMark", parent=styles["value"], fontSize=13, leading=16, alignment=1, textColor=TEXT))]], colWidths=[20*mm], rowHeights=[16*mm])
+    mark.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 1.2, RED), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("ALIGN", (0,0), (-1,-1), "CENTER"), ("LEFTPADDING", (0,0), (-1,-1), 3),
+        ("RIGHTPADDING", (0,0), (-1,-1), 3),
+    ]))
+    header = Table([[left_header, mark]], colWidths=[usable_width-23*mm, 23*mm])
+    header.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"), ("LINEBELOW", (0,0), (-1,-1), 2, RED),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 8), ("LEFTPADDING", (0,0), (-1,-1), 0),
+        ("RIGHTPADDING", (0,0), (-1,-1), 0),
+    ]))
+    story.extend([header, Spacer(1, 5*mm)])
+
+    def add_section_title(title):
+        story.append(Paragraph(escape(title), styles["section"]))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=LINE, spaceAfter=4))
+
+    def add_detail_grid(title, rows):
+        add_section_title(title)
+        cells = []
+        for label, value in rows:
+            cells.append(Paragraph(escape(str(label)), styles["label"]))
+            cells.append(Paragraph(escape(fmt(value)), styles["value"]))
+        data = []
+        for idx in range(0, len(cells), 6):
+            row = []
+            for col in range(3):
+                label_idx = idx + col * 2
+                if label_idx < len(cells):
+                    row.append([cells[label_idx], cells[label_idx + 1]])
+                else:
+                    row.append("")
+            data.append(row)
+        grid = Table(data, colWidths=[usable_width/3]*3, hAlign="LEFT")
+        grid.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), FIELD), ("GRID", (0,0), (-1,-1), 0.4, WHITE),
+            ("VALIGN", (0,0), (-1,-1), "TOP"), ("LEFTPADDING", (0,0), (-1,-1), 7),
+            ("RIGHTPADDING", (0,0), (-1,-1), 7), ("TOPPADDING", (0,0), (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ]))
+        story.extend([grid, Spacer(1, 2*mm)])
+
+    def add_rich_section(title, value):
+        if not value:
+            return
+        add_section_title(title)
+        # Translate common editor HTML into safe ReportLab paragraph markup.
+        content = str(value)
+        content = re.sub(r"<br\s*/?>", "<br/>", content, flags=re.I)
+        content = re.sub(r"</?(?:p|div)\b[^>]*>", "<br/>", content, flags=re.I)
+        content = re.sub(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", r"<b>\1</b><br/>", content, flags=re.I|re.S)
+        content = re.sub(r"<(strong|b)\b[^>]*>", "<b>", content, flags=re.I)
+        content = re.sub(r"</(strong|b)>", "</b>", content, flags=re.I)
+        content = re.sub(r"<(em|i)\b[^>]*>", "<i>", content, flags=re.I)
+        content = re.sub(r"</(em|i)>", "</i>", content, flags=re.I)
+        content = re.sub(r"<u\b[^>]*>", "<u>", content, flags=re.I)
+        content = re.sub(r"<span\b[^>]*>", "", content, flags=re.I).replace("</span>", "")
+        content = re.sub(r"<li\b[^>]*>", "• ", content, flags=re.I).replace("</li>", "<br/>")
+        content = re.sub(r"</?(?:ul|ol)\b[^>]*>", "", content, flags=re.I)
+        content = re.sub(r"<a\b[^>]*>(.*?)</a>", r"\1", content, flags=re.I|re.S)
+        content = re.sub(r"<[^>]+>", "", content)
+        from html import unescape as html_unescape
+        content = escape(html_unescape(content)).replace("\n", "<br/>")
+        # Restore only the small, explicitly supported markup after escaping text.
+        content = content.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+        content = content.replace("&lt;i&gt;", "<i>").replace("&lt;/i&gt;", "</i>")
+        content = content.replace("&lt;u&gt;", "<u>").replace("&lt;/u&gt;", "</u>")
+        content = content.replace("&lt;br/&gt;", "<br/>")
+        try:
+            story.append(Paragraph(content or "—", styles["body"]))
+        except Exception:
+            story.append(Paragraph(escape(re.sub(r"<[^>]+>", " ", str(value))), styles["body"]))
+        story.append(Spacer(1, 2*mm))
+
+    def add_table_section(title, headers, rows, ratios=None):
+        add_section_title(title)
+        data = [[Paragraph(escape(str(h)), styles["table_head"]) for h in headers]]
+        for row in rows:
+            data.append([para(v) for v in row])
+        if not rows:
+            data.append([Paragraph("No records provided", styles["table"])] + [""] * (len(headers)-1))
+        if ratios:
+            total = sum(ratios)
+            widths = [usable_width * ratio / total for ratio in ratios]
+        else:
+            widths = [usable_width / len(headers)] * len(headers)
+        table = Table(data, colWidths=widths, repeatRows=1, hAlign="LEFT")
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), TEXT), ("TEXTCOLOR", (0,0), (-1,0), WHITE),
+            ("GRID", (0,0), (-1,-1), 0.4, LINE), ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (0,0), (-1,-1), 4), ("RIGHTPADDING", (0,0), (-1,-1), 4),
+            ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [WHITE, FIELD]),
+        ]))
+        story.extend([table, Spacer(1, 2*mm)])
+
+    add_detail_grid("01 · Project details", [
+        ("Project code", project.project_code), ("Project name", project.project_name),
+        ("Project team", project.project_team), ("Project type", project.project_type),
+        ("Start date", project.start_date), ("End date", project.end_date),
+        ("No. of FTEs", project.fte_count), ("Region", project.region),
+        ("Client name", project.client_name), ("Business lead", project.business_lead),
+        ("Lead designation", project.business_lead_designation), ("Lead email", project.business_lead_email),
+        ("Billing model", project.billing_model), ("Change effective date", project.change_effective_date),
+    ])
+    add_rich_section(f"Change summary · Version {fmt(getattr(project, 'sow_version', '1.0'))}", getattr(project, "change_summary", ""))
+
+    add_table_section("02 · Cost & billing",
+        ["Cost item", "Basis", "Amount (INR)", "Currency", "FX rate", "Amount (FX)"], [
+            ["Project", "Cost per month", project.project_cost_inr, project.billing_currency, project.fx_rate, project.project_cost_fx],
+            ["Travel", "As applicable", project.travel_cost_inr, project.travel_currency, project.travel_fx_rate, project.travel_cost_fx],
+        ], [1.0, 1.35, 1.15, 0.8, 0.8, 1.1])
+    story.append(Paragraph(f"Already part of an agreed FTE arrangement: <b>{escape(fmt(project.already_agreed_fte))}</b>", styles["body"]))
+
+    add_table_section("03 · Resource plan",
+        ["Name", "Billing level", "Team", "Allocation", "Start date", "End date", "Role & responsibilities"],
+        [[r.name, r.billing_level, r.team, f"{fmt(r.allocation_percent)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources],
+        [1.0, 1.0, 0.9, 0.7, 0.8, 0.8, 2.0])
+    add_table_section("04 · Milestones & activities",
+        ["Milestone", "Action points", "Start date", "End date", "Description"],
+        [[m.milestone, m.action_points, m.start_date, m.end_date, m.description] for m in project.milestones],
+        [1.1, 1.3, 0.8, 0.8, 2.0])
+
+    add_section_title("05 · Background & scope")
+    for title, value in [("Executive summary", project.executive_summary), ("Background", project.background),
+                         ("In scope", project.in_scope), ("Out of scope", project.out_of_scope)]:
+        if value:
+            story.append(KeepTogether([Paragraph(escape(title), styles["copy_head"])]))
+            add_rich_section_content = str(value)
+            # Plain text fallback is predictable and avoids unsupported editor CSS.
+            add_rich_section(title, value)
+
+    add_section_title("06 · Risks, skills & requirements")
+    for title, value in [("Dependencies & risks", project.dependencies_risks), ("Required skills", project.required_skills),
+                         ("Software / versions required", project.software_required), ("Other notes", project.other_notes),
+                         ("Declarations", project.declarations)]:
+        if value:
+            story.append(Paragraph(escape(title), styles["copy_head"]))
+            add_rich_section(title, value)
+
+    def add_page_number(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(LINE)
+        canvas.line(12*mm, 10*mm, page_width-12*mm, 10*mm)
+        canvas.setFont("Helvetica", 6.5)
+        canvas.setFillColor(MUTED)
+        canvas.drawString(12*mm, 6*mm, f"Generated from SOW Project Workspace · Record #{project.id} · Created {project.created_at.strftime('%d %b %Y %H:%M UTC') if project.created_at else '—'}")
+        canvas.drawRightString(page_width-12*mm, 6*mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    doc = SimpleDocTemplate(output_path, pagesize=landscape(A4),
+                            rightMargin=12*mm, leftMargin=12*mm,
+                            topMargin=10*mm, bottomMargin=15*mm,
+                            title=f"{project.project_code} - {project.project_name}",
+                            author="SOW Project Workspace")
+    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
     return filename
 
 
@@ -603,9 +780,7 @@ def print_project(project_id):
 @app.route("/projects/<int:project_id>/pdf")
 def download_project_pdf(project_id):
     project = db.get_or_404(SowProject, project_id)
-    # Re-render on download so older PDFs created by the previous layout code
-    # cannot be served after a template/CSS update.
-    pdf_filename = generate_project_pdf(project)
+    pdf_filename = f"{re.sub(r'[^A-Za-z0-9_-]+', '_', project.project_code or 'SOW')}_{project.id}.pdf"
     return send_from_directory(os.path.join(app.instance_path, "generated_pdfs"),
                                pdf_filename, as_attachment=True,
                                download_name=pdf_filename)
