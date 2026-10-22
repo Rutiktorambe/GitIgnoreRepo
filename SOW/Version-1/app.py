@@ -73,7 +73,8 @@ class SowProject(db.Model):
     software_required = db.Column(db.Text)
     other_notes = db.Column(db.Text)
     declarations = db.Column(db.Text)
-    sow_version = db.Column(db.String(30), nullable=False, default="1.0")
+    sow_version = db.Column(db.String(30), nullable=False, default="V1")
+    active_flag = db.Column(db.String(1), nullable=False, default="Y", index=True)
     change_summary = db.Column(db.Text)
     milestones_json = db.Column(db.Text, nullable=False, default="[]")
 
@@ -99,8 +100,10 @@ class SowResource(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey("sow_projects.id"), nullable=False)
+    employee_id = db.Column(db.String(50), nullable=False, default="", index=True)
     name = db.Column(db.String(150), nullable=False)
     billing_level = db.Column(db.String(100))
+    active_flag = db.Column(db.String(3), nullable=False, default="Y", index=True)
     team = db.Column(db.String(100))
     allocation_percent = db.Column(db.Numeric(6, 2), default=100)
     start_date = db.Column(db.Date)
@@ -242,7 +245,7 @@ def edit_project(project_id):
         data[key] = "" if value is None else str(value)
     resources = [(r.name, r.billing_level or "", str(r.allocation_percent if r.allocation_percent is not None else 100),
                   r.start_date.strftime("%Y-%m-%d") if r.start_date else "",
-                  r.end_date.strftime("%Y-%m-%d") if r.end_date else "", r.responsibilities or "", r.team or "")
+                  r.end_date.strftime("%Y-%m-%d") if r.end_date else "", r.responsibilities or "", r.team or "", r.employee_id or "")
                  for r in saved.resources]
     milestones = [
         (m.milestone, str(m.action_points if m.action_points is not None else 1),
@@ -254,6 +257,18 @@ def edit_project(project_id):
         edit_project_id=saved.id, editing_project=saved
     ))
 
+
+
+def next_sow_version(current_version=None):
+    """Return V1 for a new SOW and increment the minor version for each revision."""
+    if not current_version:
+        return "V1"
+    match = re.fullmatch(r"V?(\d+)(?:\.(\d+))?", str(current_version).strip(), re.IGNORECASE)
+    if not match:
+        return "V1.1"
+    major = int(match.group(1))
+    minor = int(match.group(2) or 0)
+    return f"V{major}.{minor + 1}"
 
 
 def _preview_object(draft):
@@ -270,6 +285,7 @@ def _preview_object(draft):
         if not name.strip():
             continue
         resources.append(SimpleNamespace(
+            employee_id=val("resource_employee_id[]", i).strip(),
             name=name, billing_level=val("resource_level[]", i),
             team=val("resource_team[]", i),
             allocation_percent=val("resource_allocation[]", i, "100"),
@@ -337,174 +353,74 @@ def _preview_object(draft):
 # PDF OPERATION: BUILD THE SOW PDF
 # ============================================================
 def generate_project_pdf(project):
-    """Generate a print-ready SOW PDF with ReportLab (no browser executable).
-
-    Mirrors print.html's section order, landscape A4 page size, restrained
-    Intact-red/white palette, three-column project-detail grid, and table styling.
-    ReportLab does not render HTML/CSS, so this is a layout recreation rather than
-    a pixel-identical browser screenshot.
-    """
-    from xml.sax.saxutils import escape
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_LEFT, TA_RIGHT
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm
-    from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether,
-        HRFlowable
-    )
-
+    """Generate a PDF on the server and return its filename."""
     output_dir = os.path.join(app.instance_path, "generated_pdfs")
     os.makedirs(output_dir, exist_ok=True)
     safe_code = re.sub(r"[^A-Za-z0-9_-]+", "_", project.project_code or "SOW")
     filename = f"{safe_code}_{project.id}.pdf"
     output_path = os.path.join(output_dir, filename)
 
-    RED = colors.HexColor("#e31837")
-    RED_PALE = colors.HexColor("#fff0f2")
-    TEXT = colors.HexColor("#303030")
-    MUTED = colors.HexColor("#666666")
-    LINE = colors.HexColor("#e0e0e0")
-    FIELD = colors.HexColor("#f7f7f7")
-    WHITE = colors.white
-
-    base = getSampleStyleSheet()
-    styles = {
-        "eyebrow": ParagraphStyle("SowEyebrow", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=7, leading=9, textColor=RED, spaceAfter=4),
-        "title": ParagraphStyle("SowTitle", parent=base["Title"], fontName="Helvetica-Bold", fontSize=21, leading=25, alignment=TA_LEFT, textColor=TEXT, spaceAfter=5),
-        "subtitle": ParagraphStyle("SowSubtitle", parent=base["Normal"], fontSize=8, leading=11, textColor=MUTED),
-        "section": ParagraphStyle("SowSection", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=10, leading=13, textColor=TEXT, spaceBefore=8, spaceAfter=5, keepWithNext=True),
-        "label": ParagraphStyle("SowLabel", parent=base["Normal"], fontSize=6.5, leading=8, textColor=MUTED, spaceAfter=2),
-        "value": ParagraphStyle("SowValue", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=TEXT, wordWrap="CJK"),
-        "body": ParagraphStyle("SowBody", parent=base["BodyText"], fontSize=8, leading=11, textColor=TEXT, spaceAfter=3, wordWrap="CJK"),
-        "table": ParagraphStyle("SowTable", parent=base["Normal"], fontSize=6.2, leading=8, textColor=TEXT, wordWrap="CJK"),
-        "table_head": ParagraphStyle("SowTableHead", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=6.2, leading=8, textColor=WHITE, wordWrap="CJK"),
-        "copy_head": ParagraphStyle("SowCopyHead", parent=base["Heading3"], fontName="Helvetica-Bold", fontSize=8.5, leading=11, textColor=TEXT, spaceBefore=5, spaceAfter=3, keepWithNext=True),
-        "footer": ParagraphStyle("SowFooter", parent=base["Normal"], fontSize=6.5, leading=8, textColor=MUTED),
-    }
-    page_width, _ = landscape(A4)
-    usable_width = page_width - 24 * mm
-    story = []
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="SowTitle", parent=styles["Title"], fontName="Helvetica-Bold",
+                              fontSize=19, leading=23, textColor=colors.HexColor("#35245e"), alignment=TA_LEFT))
+    styles.add(ParagraphStyle(name="SowSection", parent=styles["Heading2"], fontSize=12, leading=15,
+                              textColor=colors.HexColor("#35245e"), spaceBefore=10, spaceAfter=6))
+    styles.add(ParagraphStyle(name="SowBody", parent=styles["BodyText"], fontSize=8.5, leading=11, spaceAfter=4))
+    styles.add(ParagraphStyle(name="SowSmall", parent=styles["BodyText"], fontSize=7, leading=9))
+    story = [
+        Paragraph("STATEMENT OF WORK", styles["SowSmall"]),
+        Paragraph(html.escape(project.project_name or "Untitled SOW"), styles["SowTitle"]),
+        Paragraph(f"Project code: {html.escape(str(project.project_code or '—'))} &nbsp; | &nbsp; Region: {html.escape(str(project.region or '—'))}", styles["SowBody"]),
+        Spacer(1, 4*mm),
+    ]
 
     def fmt(value):
         if value is None or str(value).strip() == "":
             return "—"
         if isinstance(value, (date, datetime)):
-            return value.strftime("%d-%m-%Y")
+            return value.strftime("%d-%b-%Y")
         return str(value)
 
-    def para(value, style="table"):
-        # Escape plain values so user-entered &, <, > characters don't break PDF markup.
-        return Paragraph(escape(fmt(value)).replace("\n", "<br/>"), styles[style])
-
-    # Header matching the print template's title, metadata, red rule, and SOW mark.
-    left_header = [
-        Paragraph("STATEMENT OF WORK", styles["eyebrow"]),
-        Paragraph(escape(project.project_name or "Untitled SOW"), styles["title"]),
-        Paragraph(
-            f"{escape(fmt(project.project_code))}  ·  {escape(fmt(project.region))}  ·  SOW Version {escape(fmt(getattr(project, 'sow_version', '1.0')))}",
-            styles["subtitle"]
-        ),
-    ]
-    mark = Table([[Paragraph("<b>SOW</b>", ParagraphStyle("SowMark", parent=styles["value"], fontSize=13, leading=16, alignment=1, textColor=TEXT))]], colWidths=[20*mm], rowHeights=[16*mm])
-    mark.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 1.2, RED), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ("ALIGN", (0,0), (-1,-1), "CENTER"), ("LEFTPADDING", (0,0), (-1,-1), 3),
-        ("RIGHTPADDING", (0,0), (-1,-1), 3),
-    ]))
-    header = Table([[left_header, mark]], colWidths=[usable_width-23*mm, 23*mm])
-    header.setStyle(TableStyle([
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"), ("LINEBELOW", (0,0), (-1,-1), 2, RED),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 8), ("LEFTPADDING", (0,0), (-1,-1), 0),
-        ("RIGHTPADDING", (0,0), (-1,-1), 0),
-    ]))
-    story.extend([header, Spacer(1, 5*mm)])
-
-    def add_section_title(title):
-        story.append(Paragraph(escape(title), styles["section"]))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=LINE, spaceAfter=4))
-
-    def add_detail_grid(title, rows):
-        add_section_title(title)
-        cells = []
-        for label, value in rows:
-            cells.append(Paragraph(escape(str(label)), styles["label"]))
-            cells.append(Paragraph(escape(fmt(value)), styles["value"]))
-        data = []
-        for idx in range(0, len(cells), 6):
-            row = []
-            for col in range(3):
-                label_idx = idx + col * 2
-                if label_idx < len(cells):
-                    row.append([cells[label_idx], cells[label_idx + 1]])
-                else:
-                    row.append("")
-            data.append(row)
-        grid = Table(data, colWidths=[usable_width/3]*3, hAlign="LEFT")
-        grid.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,-1), FIELD), ("GRID", (0,0), (-1,-1), 0.4, WHITE),
-            ("VALIGN", (0,0), (-1,-1), "TOP"), ("LEFTPADDING", (0,0), (-1,-1), 7),
-            ("RIGHTPADDING", (0,0), (-1,-1), 7), ("TOPPADDING", (0,0), (-1,-1), 6),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+    def add_section(title, rows):
+        story.append(Paragraph(html.escape(title), styles["SowSection"]))
+        table = Table([[Paragraph(f"<b>{html.escape(str(k))}</b>", styles["SowSmall"]),
+                        Paragraph(html.escape(fmt(v)), styles["SowSmall"])] for k, v in rows],
+                      colWidths=[48*mm, 220*mm], repeatRows=0)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#f0edf8")),
+            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (0,0), (-1,-1), 5), ("RIGHTPADDING", (0,0), (-1,-1), 5),
+            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
         ]))
-        story.extend([grid, Spacer(1, 2*mm)])
+        story.append(table)
+        story.append(Spacer(1, 2*mm))
 
     def add_rich_section(title, value):
         if not value:
             return
-        add_section_title(title)
-        # Translate common editor HTML into safe ReportLab paragraph markup.
-        content = str(value)
-        content = re.sub(r"<br\s*/?>", "<br/>", content, flags=re.I)
-        content = re.sub(r"</?(?:p|div)\b[^>]*>", "<br/>", content, flags=re.I)
-        content = re.sub(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", r"<b>\1</b><br/>", content, flags=re.I|re.S)
-        content = re.sub(r"<(strong|b)\b[^>]*>", "<b>", content, flags=re.I)
-        content = re.sub(r"</(strong|b)>", "</b>", content, flags=re.I)
-        content = re.sub(r"<(em|i)\b[^>]*>", "<i>", content, flags=re.I)
-        content = re.sub(r"</(em|i)>", "</i>", content, flags=re.I)
-        content = re.sub(r"<u\b[^>]*>", "<u>", content, flags=re.I)
-        content = re.sub(r"<span\b[^>]*>", "", content, flags=re.I).replace("</span>", "")
-        content = re.sub(r"<li\b[^>]*>", "• ", content, flags=re.I).replace("</li>", "<br/>")
-        content = re.sub(r"</?(?:ul|ol)\b[^>]*>", "", content, flags=re.I)
-        content = re.sub(r"<a\b[^>]*>(.*?)</a>", r"\1", content, flags=re.I|re.S)
-        content = re.sub(r"<[^>]+>", "", content)
-        from html import unescape as html_unescape
-        content = escape(html_unescape(content)).replace("\n", "<br/>")
-        # Restore only the small, explicitly supported markup after escaping text.
-        content = content.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
-        content = content.replace("&lt;i&gt;", "<i>").replace("&lt;/i&gt;", "</i>")
-        content = content.replace("&lt;u&gt;", "<u>").replace("&lt;/u&gt;", "</u>")
-        content = content.replace("&lt;br/&gt;", "<br/>")
+        story.append(Paragraph(html.escape(title), styles["SowSection"]))
+        # ReportLab Paragraph supports a safe subset of HTML; sanitize and convert common tags.
+        content = value.replace("<p", "<para").replace("</p>", "</para>")
+        content = re.sub(r'<(h[23])[^>]*>', '<b>', content, flags=re.I)
+        content = re.sub(r'</h[23]>', '</b><br/>', content, flags=re.I)
+        content = re.sub(r'<span[^>]*>', '', content, flags=re.I).replace("</span>", "")
+        content = content.replace("<div>", "").replace("</div>", "<br/>")
+        content = content.replace("<blockquote>", "<i>").replace("</blockquote>", "</i><br/>")
+        content = re.sub(r"""<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)</a>""", r'<link href="\1" color="blue">\2</link>', content, flags=re.I)
+        # Keep only tags ReportLab can parse, stripping style attributes and Quill classes.
+        content = re.sub(r'<(p|para|strong|b|em|i|u|ol|ul|li|br)(?:\s+[^>]*)?>', lambda m: "<" + m.group(1).lower() + ">", content, flags=re.I)
+        content = re.sub(r'<(?!/?(?:para|strong|b|em|i|u|ol|ul|li|br|link)\b)[^>]+>', '', content, flags=re.I)
+        content = content.replace("&nbsp;", " ").replace("&#39;", "'")
+        if not content.strip():
+            return
         try:
-            story.append(Paragraph(content or "—", styles["body"]))
+            story.append(Paragraph(content, styles["SowBody"]))
         except Exception:
-            story.append(Paragraph(escape(re.sub(r"<[^>]+>", " ", str(value))), styles["body"]))
-        story.append(Spacer(1, 2*mm))
+            plain = re.sub(r"<[^>]+>", " ", content)
+            story.append(Paragraph(html.escape(plain), styles["SowBody"]))
 
-    def add_table_section(title, headers, rows, ratios=None):
-        add_section_title(title)
-        data = [[Paragraph(escape(str(h)), styles["table_head"]) for h in headers]]
-        for row in rows:
-            data.append([para(v) for v in row])
-        if not rows:
-            data.append([Paragraph("No records provided", styles["table"])] + [""] * (len(headers)-1))
-        if ratios:
-            total = sum(ratios)
-            widths = [usable_width * ratio / total for ratio in ratios]
-        else:
-            widths = [usable_width / len(headers)] * len(headers)
-        table = Table(data, colWidths=widths, repeatRows=1, hAlign="LEFT")
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), TEXT), ("TEXTCOLOR", (0,0), (-1,0), WHITE),
-            ("GRID", (0,0), (-1,-1), 0.4, LINE), ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("LEFTPADDING", (0,0), (-1,-1), 4), ("RIGHTPADDING", (0,0), (-1,-1), 4),
-            ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-            ("ROWBACKGROUNDS", (0,1), (-1,-1), [WHITE, FIELD]),
-        ]))
-        story.extend([table, Spacer(1, 2*mm)])
-
-    add_detail_grid("01 · Project details", [
+    add_section("01 · Project details", [
         ("Project code", project.project_code), ("Project name", project.project_name),
         ("Project team", project.project_team), ("Project type", project.project_type),
         ("Start date", project.start_date), ("End date", project.end_date),
@@ -512,57 +428,65 @@ def generate_project_pdf(project):
         ("Client name", project.client_name), ("Business lead", project.business_lead),
         ("Lead designation", project.business_lead_designation), ("Lead email", project.business_lead_email),
         ("Billing model", project.billing_model), ("Change effective date", project.change_effective_date),
+        ("SOW version", getattr(project, "sow_version", "1.0")),
     ])
-    add_rich_section(f"Change summary · Version {fmt(getattr(project, 'sow_version', '1.0'))}", getattr(project, "change_summary", ""))
+    add_rich_section("Change summary", getattr(project, "change_summary", ""))
+    add_section("02 · Cost & billing", [
+        ("Project cost (INR)", project.project_cost_inr), ("Billing currency", project.billing_currency),
+        ("FX rate", project.fx_rate), ("Project amount (FX)", project.project_cost_fx),
+        ("Travel cost (INR)", project.travel_cost_inr), ("Travel currency", project.travel_currency),
+        ("Travel FX rate", project.travel_fx_rate), ("Travel amount (FX)", project.travel_cost_fx),
+        ("Already agreed FTE arrangement", project.already_agreed_fte),
+    ])
 
-    add_table_section("02 · Cost & billing",
-        ["Cost item", "Basis", "Amount (INR)", "Currency", "FX rate", "Amount (FX)"], [
-            ["Project", "Cost per month", project.project_cost_inr, project.billing_currency, project.fx_rate, project.project_cost_fx],
-            ["Travel", "As applicable", project.travel_cost_inr, project.travel_currency, project.travel_fx_rate, project.travel_cost_fx],
-        ], [1.0, 1.35, 1.15, 0.8, 0.8, 1.1])
-    story.append(Paragraph(f"Already part of an agreed FTE arrangement: <b>{escape(fmt(project.already_agreed_fte))}</b>", styles["body"]))
+    def add_grid_table(title, headers, rows):
+        story.append(Paragraph(html.escape(title), styles["SowSection"]))
+        data = [[Paragraph(f"<b>{html.escape(str(h))}</b>", styles["SowSmall"]) for h in headers]]
+        for row in rows:
+            data.append([Paragraph(html.escape(fmt(v)), styles["SowSmall"]) for v in row])
+        if len(data) == 1:
+            data.append([Paragraph("No records provided", styles["SowSmall"])] + [Paragraph("", styles["SowSmall"]) for _ in headers[1:]])
+        widths = [268*mm / len(headers)] * len(headers)
+        table = Table(data, colWidths=widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#35245e")),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (0,0), (-1,-1), 4), ("RIGHTPADDING", (0,0), (-1,-1), 4),
+            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 2*mm))
 
-    add_table_section("03 · Resource plan",
-        ["Name", "Billing level", "Team", "Allocation", "Start date", "End date", "Role & responsibilities"],
-        [[r.name, r.billing_level, r.team, f"{fmt(r.allocation_percent)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources],
-        [1.0, 1.0, 0.9, 0.7, 0.8, 0.8, 2.0])
-    add_table_section("04 · Milestones & activities",
-        ["Milestone", "Action points", "Start date", "End date", "Description"],
-        [[m.milestone, m.action_points, m.start_date, m.end_date, m.description] for m in project.milestones],
-        [1.1, 1.3, 0.8, 0.8, 2.0])
+    add_grid_table("03 · Resource plan",
+        ["EMP ID", "Name", "Billing level", "Team", "Allocation", "Start", "End", "Responsibilities"],
+        [[r.employee_id, r.name, r.billing_level, r.team, f"{fmt(r.allocation_percent)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources])
+    add_grid_table("04 · Milestones & activities",
+        ["Milestone", "Action points", "Start", "End", "Description"],
+        [[m.milestone, m.action_points, m.start_date, m.end_date, m.description] for m in project.milestones])
 
-    add_section_title("05 · Background & scope")
-    for title, value in [("Executive summary", project.executive_summary), ("Background", project.background),
-                         ("In scope", project.in_scope), ("Out of scope", project.out_of_scope)]:
-        if value:
-            story.append(KeepTogether([Paragraph(escape(title), styles["copy_head"])]))
-            add_rich_section_content = str(value)
-            # Plain text fallback is predictable and avoids unsupported editor CSS.
-            add_rich_section(title, value)
-
-    add_section_title("06 · Risks, skills & requirements")
-    for title, value in [("Dependencies & risks", project.dependencies_risks), ("Required skills", project.required_skills),
-                         ("Software / versions required", project.software_required), ("Other notes", project.other_notes),
-                         ("Declarations", project.declarations)]:
-        if value:
-            story.append(Paragraph(escape(title), styles["copy_head"]))
-            add_rich_section(title, value)
+    for title, value in [
+        ("05 · Executive summary", project.executive_summary), ("Background", project.background),
+        ("In scope", project.in_scope), ("Out of scope", project.out_of_scope),
+        ("06 · Dependencies & risks", project.dependencies_risks), ("Required skills", project.required_skills),
+        ("Software required", project.software_required), ("Other notes", project.other_notes),
+        ("Declarations", project.declarations),
+    ]:
+        add_rich_section(title, value)
 
     def add_page_number(canvas, doc):
         canvas.saveState()
-        canvas.setStrokeColor(LINE)
-        canvas.line(12*mm, 10*mm, page_width-12*mm, 10*mm)
-        canvas.setFont("Helvetica", 6.5)
-        canvas.setFillColor(MUTED)
-        canvas.drawString(12*mm, 6*mm, f"Generated from SOW Project Workspace · Record #{project.id} · Created {project.created_at.strftime('%d %b %Y %H:%M UTC') if project.created_at else '—'}")
-        canvas.drawRightString(page_width-12*mm, 6*mm, f"Page {doc.page}")
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(colors.HexColor("#777777"))
+        canvas.drawString(14*mm, 7*mm, f"SOW {project.project_code} · Record {project.id}")
+        canvas.drawRightString(283*mm, 7*mm, f"Page {doc.page}")
         canvas.restoreState()
 
     doc = SimpleDocTemplate(output_path, pagesize=landscape(A4),
-                            rightMargin=12*mm, leftMargin=12*mm,
-                            topMargin=10*mm, bottomMargin=15*mm,
-                            title=f"{project.project_code} - {project.project_name}",
-                            author="SOW Project Workspace")
+                            rightMargin=14*mm, leftMargin=14*mm,
+                            topMargin=12*mm, bottomMargin=13*mm,
+                            title=f"{project.project_code} - {project.project_name}")
     doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
     return filename
 
@@ -581,7 +505,11 @@ def preview_project():
         json.dump(draft, draft_file, ensure_ascii=False)
     session["sow_draft_token"] = token
     project = _preview_object(draft)
-    return render_template("print.html", project=project, preview_mode=True)
+    edit_id = (project.edit_project_id or "").strip()
+    current = db.session.get(SowProject, int(edit_id)) if edit_id.isdigit() else None
+    suggested_version = next_sow_version(current.sow_version if current else None)
+    return render_template("print.html", project=project, preview_mode=True,
+                           suggested_version=suggested_version)
 
 
 # ============================================================
@@ -625,15 +553,15 @@ def save_sow_to_database(project_id=None):
     confirmation_code = request.form.get("project_code_confirm", "").strip()
     expected_code = (data.get("project_code") or "").strip()
 
-    if not confirmation_summary or not confirmation_version or confirmation_code != expected_code:
+    if not confirmation_summary or confirmation_code != expected_code:
         project = _preview_object(draft)
         return render_template(
             "print.html", project=project, preview_mode=True,
             confirmation_error=(
-                "Enter a change summary and SOW version, and confirm the project code. "
+                "Enter a change summary and confirm the project code. "
                 "No database record or PDF has been created yet."
             ),
-            modal_open=True,
+            modal_open=True, suggested_version=(next_sow_version(db.session.get(SowProject, project_id).sow_version) if project_id is not None else "V1"),
         ), 400
 
     draft_project_id = (data.get("edit_project_id") or "").strip()
@@ -645,7 +573,13 @@ def save_sow_to_database(project_id=None):
         return redirect(url_for("edit_project", project_id=project_id))
     edit_project_id = str(project_id) if project_id is not None else ""
     existing_project = db.get_or_404(SowProject, project_id) if project_id is not None else None
-    project = existing_project or SowProject()
+    if existing_project is not None and existing_project.active_flag != "Y":
+        latest = (SowProject.query.filter_by(project_code=existing_project.project_code, active_flag="Y")
+                  .order_by(SowProject.id.desc()).first())
+        flash("Only the active SOW version can be edited. Opened the latest active version.", "error")
+        return redirect(url_for("edit_project", project_id=latest.id)) if latest else redirect(url_for("list_projects"))
+    # Version history is append-only: edits create a new project row; the prior row is deactivated.
+    project = SowProject()
     project.project_code = data.get("project_code", "").strip()
     project.project_name = data.get("project_name", "").strip()
     project.project_team = data.get("project_team")
@@ -678,10 +612,14 @@ def save_sow_to_database(project_id=None):
     project.software_required = clean_rich_text(data.get("software_required"))
     project.other_notes = clean_rich_text(data.get("other_notes"))
     project.declarations = clean_rich_text(data.get("declarations"))
-    project.sow_version = confirmation_version
+    project.sow_version = next_sow_version(existing_project.sow_version if existing_project else None)
+    project.active_flag = "Y"
     project.change_summary = clean_rich_text(confirmation_summary)
     if existing_project is not None:
-        existing_project.resources.clear()
+        existing_project.active_flag = "N"
+        # Retain old resource rows for history, but mark the previous version's rows inactive.
+        for old_resource in existing_project.resources:
+            old_resource.active_flag = "N"
 
     try:
         db.session.add(project)
@@ -694,7 +632,12 @@ def save_sow_to_database(project_id=None):
         for i, name in enumerate(draft.get("resource_name[]", [])):
             if not name.strip():
                 continue
+            employee_id = val("resource_employee_id[]", i).strip()
+            if not employee_id:
+                raise ValueError(f"Employee ID is required for resource: {name.strip()}")
             project.resources.append(SowResource(
+                employee_id=employee_id,
+                active_flag="Y",
                 name=name.strip(),
                 billing_level=val("resource_level[]", i),
                 team=val("resource_team[]", i),
@@ -753,8 +696,8 @@ def save_sow_to_database(project_id=None):
                 os.remove(draft_path)
             except FileNotFoundError:
                 pass
-        action_word = "updated" if existing_project is not None else "created"
-        flash(f"SOW {action_word} in the database. PDF generated automatically: {pdf_filename}", "success")
+        action_word = "new version created" if existing_project is not None else "created"
+        flash(f"SOW {action_word} ({project.sow_version}). Previous version is retained as inactive. PDF generated automatically: {pdf_filename}", "success")
         return redirect(url_for("print_project", project_id=project.id, saved=1))
     except Exception as exc:
         db.session.rollback()
@@ -799,20 +742,36 @@ def ensure_schema():
 
     if "sow_resources" in tables:
         columns = {c["name"] for c in inspector.get_columns("sow_resources")}
-        if "team" not in columns:
-            with db.engine.begin() as conn:
+        with db.engine.begin() as conn:
+            if "team" not in columns:
                 conn.execute(text("ALTER TABLE sow_resources ADD COLUMN team VARCHAR(100) NULL"))
+            if "employee_id" not in columns:
+                conn.execute(text("ALTER TABLE sow_resources ADD COLUMN employee_id VARCHAR(50) NOT NULL DEFAULT ''"))
+            if "active_flag" not in columns:
+                conn.execute(text("ALTER TABLE sow_resources ADD COLUMN active_flag VARCHAR(3) NOT NULL DEFAULT 'Y'"))
 
+    added_project_active_flag = False
     if "sow_projects" in tables:
         columns = {c["name"] for c in inspector.get_columns("sow_projects")}
         for name, sql_type in [
-            ("sow_version", "VARCHAR(30) NOT NULL DEFAULT '1.0'"),
+            ("sow_version", "VARCHAR(30) NOT NULL DEFAULT 'V1'"),
+            ("active_flag", "VARCHAR(1) NOT NULL DEFAULT 'Y'"),
             ("change_summary", "TEXT NULL"),
             ("milestones_json", "TEXT NULL"),
         ]:
             if name not in columns:
                 with db.engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE sow_projects ADD COLUMN {name} {sql_type}"))
+                if name == "active_flag":
+                    added_project_active_flag = True
+
+    # One-time backfill only when adding the new active flag to an older database.
+    # Do not run this on every request: later version status is managed by the save operation.
+    if added_project_active_flag:
+        with db.engine.begin() as conn:
+            conn.execute(text("UPDATE sow_projects SET sow_version = 'V1' WHERE sow_version IS NULL OR sow_version = '' OR sow_version = '1.0'"))
+            conn.execute(text("UPDATE sow_projects SET active_flag = 'N' WHERE id NOT IN (SELECT MAX(id) FROM sow_projects GROUP BY project_code)"))
+            conn.execute(text("UPDATE sow_projects SET active_flag = 'Y' WHERE id IN (SELECT MAX(id) FROM sow_projects GROUP BY project_code)"))
 
     # Migrate old milestone rows to JSON before dropping the legacy third table.
     if "sow_milestones" in set(db.inspect(db.engine).get_table_names()):

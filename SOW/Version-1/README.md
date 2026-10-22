@@ -39,7 +39,7 @@ mssql+pyodbc://USERNAME:PASSWORD@SERVER_NAME/DATABASE_NAME?driver=ODBC+Driver+18
 - The app creates missing application tables and applies compatibility columns; it does not insert demo data. Back up an existing database before applying schema changes.
 
 ## Rich text and PDF
-Narrative fields use the built-in contenteditable editor (no Quill CDN). HTML is sanitized server-side before storage. The final submission generates a PDF with ReportLab in `instance/generated_pdfs/`; it does not launch Chromium or another browser executable. The PDF follows the print template section order, landscape A4 page size, red/white palette, project-detail grid, and table structure. ReportLab is not an HTML/CSS browser renderer, so a pixel-for-pixel match to the browser print preview cannot be guaranteed; compare the output with the preview before production use. The saved SOW page provides a download link.
+Narrative fields use Quill rich-text editing. HTML is sanitized server-side before storage. The final submission generates a PDF in `instance/generated_pdfs/`; the saved SOW page provides a download link.
 
 ## Production considerations
 Add authentication/authorization, CSRF protection, database migrations, stronger validation, and audit logging before deploying with real client or employee data.
@@ -74,3 +74,15 @@ Add authentication/authorization, CSRF protection, database migrations, stronger
 - **DATABASE OPERATION**: `save_sow_to_database()` is the function that inserts/updates `SowProject` and synchronizes `SowResource` rows.
 - **PDF OPERATION**: `generate_project_pdf()` creates the PDF file.
 - **DATABASE SCHEMA**: `ensure_schema()` creates the two model tables and migrates old milestone rows.
+
+
+## SOW version history and resource status
+
+- Creating a new SOW assigns version `V1` and `active_flag = 'Y'`.
+- Updating an active SOW inserts a **new `sow_projects` row**; it does not overwrite the prior SOW row. Versions increment automatically (`V1` → `V1.1` → `V1.2`).
+- The prior project version is retained with `active_flag = 'N'`; the new version is active (`Y`). Only active versions can be edited.
+- `sow_resources` includes `employee_id` (EMP ID) and `active_flag`. Each version gets a fresh resource snapshot. On revision, resource rows belonging to the previous version are retained but marked `N`; resources submitted in the new version are inserted as `Y`. If an EMP ID is removed from the new resource plan, it will have no active resource row in the new version, and its previous row remains inactive for history.
+- `sow_projects` and `sow_resources` remain the only two application tables. Milestones are stored as JSON on `sow_projects`.
+- The schema initializer adds the new columns to an existing database. Back up an existing database before first startup after this update.
+
+The EMP ID is required for every resource row so resource changes can be tracked consistently by employee identifier.
