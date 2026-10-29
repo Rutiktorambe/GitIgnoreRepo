@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="heading"><div><p class="eyebrow">YOUR SUBMISSIONS</p><h1>Reimbursement History</h1><p class="muted">Demo data is included so you can test the application.</p></div><a class="btn primary" href="{{ url_for('new_form') }}">＋ New Form</a></div>
+<section class="panel"><div class="tablewrap"><table><thead><tr><th>Form No.</th><th>Employee</th><th>Employee ID</th><th>Date</th><th>Entries</th><th>Claim Total (INR)</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for f in forms %}<tr><td><strong>{{ f.form_no }}</strong></td><td>{{ f.name or '—' }}</td><td>{{ f.emp_id or '—' }}</td><td>{{ f.form_date or '—' }}</td><td>{{ f.count }}</td><td>{{ '%.2f'|format(f.total or 0) }}</td><td><span class="status">{{ f.status or 'Submitted' }}</span></td><td><div class="links"><a href="{{ url_for('form_action',form_no=f.form_no,action='view') }}">View</a><a href="{{ url_for('form_action',form_no=f.form_no,action='edit') }}">Edit</a><a class="del" href="{{ url_for('form_action',form_no=f.form_no,action='delete') }}">Delete</a></div></td></tr>
+{% else %}<tr><td colspan="8" class="empty">No forms yet. Create a new form to get started.</td></tr>{% endfor %}
+</tbody></table></div></section>
+
+{% endblock %}

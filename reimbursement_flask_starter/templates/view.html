@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="heading"><div><p class="eyebrow">FORM DETAILS</p><h1>Sundry Reimbursement</h1><p class="muted">Form number: <strong>{{ form_no }}</strong></p></div><div class="actions"><a class="btn secondary" href="{{ url_for('history') }}">History</a><a class="btn primary" href="{{ url_for('form_action',form_no=form_no,action='edit') }}">Edit Form</a></div></div>
+<section class="panel"><div class="grid"><div><small>Employee Name</small><p><strong>{{ rows[0].EName or '—' }}</strong></p></div><div><small>Employee ID</small><p><strong>{{ rows[0].EmpID or '—' }}</strong></p></div><div><small>Line Manager</small><p><strong>{{ rows[0].Manager or '—' }}</strong></p></div><div><small>Form Date</small><p><strong>{{ rows[0].FormDate or '—' }}</strong></p></div></div></section>
+<section class="panel"><h2>Expense entries</h2>{% for r in rows %}<article class="entry"><h3>Entry {{ r.Item }} — {{ r.Description or 'Expense' }}</h3><div class="grid three">
+<div><small>Expense Code</small><p>{{ r.GCCExpCode or '—' }}</p></div><div><small>Expense Date</small><p>{{ r.ExpenseDate or '—' }}</p></div><div><small>Bill No.</small><p>{{ r.BillNo or '—' }}</p></div>
+<div><small>Bill Amount</small><p>₹{{ '%.2f'|format(r.BillAmount or 0) }}</p></div><div><small>Claim Amount</small><p>₹{{ '%.2f'|format(r.ClaimAmount or 0) }}</p></div><div><small>Chargeable</small><p>{{ r.Chargeable or 'NO' }}</p></div><div><small>Client</small><p>{{ r.ClientName or '—' }}</p></div><div><small>Comments</small><p>{{ r.Comments or '—' }}</p></div></div>
+{% if r.DocumentID %}<p><a href="{{ url_for('download_pdf',form_no=form_no,item=r.Item) }}">Download merged attachment PDF</a></p>{% else %}<p class="muted">No attachment PDF saved for this entry.</p>{% endif %}</article>{% endfor %}
+<div class="totals">Total claim amount: <strong>₹{{ '%.2f'|format(rows|sum(attribute='ClaimAmount')) }}</strong></div></section>
+
+{% endblock %}
