@@ -140,7 +140,7 @@ def seed_dummy_data():
         ExpenseSundry(FormNo="SR-DEMO-1002", Item=1, FormDate=today, EmpID="A0566",
                       EName="Rutik Torambe", Manager="Shivam Khurana", Description="Office Supplies",
                       GCCExpCode="OFF-005", ExpenseDate=today, BillNo="BILL-205",
-                      BillAmount=420, ClaimAmount=420, Chargeable="NO",
+                      BillAmount=9420, ClaimAmount=9420, Chargeable="NO",
                       ClientName="Internal", Comments="Stationery", Status="Approved"),
     ]
     db.session.add_all(demo)
@@ -180,8 +180,59 @@ def new_form():
 
 @app.route("/reimbursement/history")
 def history():
-    rows = all_forms_summary()
-    return page("Reimbursement History", "history.html", forms=rows)
+    """Load saved reimbursement forms and prepare data for the history screen.
+
+    Optional URL filters: ?q=<form/name/employee-id>, ?status=Approved,
+    and ?sort=amount. The page also supports live client-side filtering.
+    """
+    all_rows_summary = all_forms_summary()
+    search_text = (request.args.get("q") or "").strip().lower()
+    selected_status = (request.args.get("status") or "").strip().lower()
+    sort_by = (request.args.get("sort") or "date").strip().lower()
+
+    # Build filter choices from real statuses stored in ExpenseSundry.
+    statuses = sorted({
+        str(item.get("status") or "Submitted")
+        for item in all_rows_summary
+        if str(item.get("status") or "Submitted").strip()
+    })
+
+    rows = all_rows_summary
+    if search_text:
+        rows = [
+            item for item in rows
+            if search_text in str(item.get("form_no") or "").lower()
+            or search_text in str(item.get("name") or "").lower()
+            or search_text in str(item.get("emp_id") or "").lower()
+        ]
+
+    if selected_status:
+        rows = [
+            item for item in rows
+            if selected_status == str(item.get("status") or "Submitted").lower()
+        ]
+
+    if sort_by == "amount":
+        rows.sort(
+            key=lambda item: (item.get("total") or 0, item.get("form_no") or ""),
+            reverse=True,
+        )
+    else:
+        rows.sort(
+            key=lambda item: (item.get("form_date") or "", item.get("form_no") or ""),
+            reverse=True,
+        )
+
+    return page(
+        "Reimbursement History",
+        "history.html",
+        forms=rows,
+        statuses=statuses,
+        selected_status=selected_status,
+        search_text=search_text,
+        sort_by=sort_by,
+        total_forms=len(rows),
+    )
 
 
 @app.route("/reimbursement/<form_no>/<action>", methods=["GET", "POST"])
@@ -249,6 +300,11 @@ def blank_row(item):
 
 
 def all_forms_summary():
+    """
+    Aggregate the saved expense rows into one history record per FormNo.
+    ExpenseSundry currently has one Status column only; it does not store
+    separate Manager, HR, Signatory, or Admin approval states.
+    """
     grouped = {}
     for row in ExpenseSundry.query.order_by(ExpenseSundry.FormDate.desc(), ExpenseSundry.FormNo, ExpenseSundry.Item).all():
         entry = grouped.setdefault(row.FormNo, {

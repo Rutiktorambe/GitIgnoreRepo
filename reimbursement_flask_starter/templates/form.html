@@ -1,46 +1,80 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#c8102e"><title>Sundry Reimbursement</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+{% extends "base.html" %}
+{% block content %}
 <style>
- :root{--red:#c8102e;--navy:#172b4d;--ink:#253449;--muted:#68788b;--line:#dce3eb;--soft:#f5f7fa;--white:#fff;--teal:#087f8c}
-*{box-sizing:border-box}body{margin:0;background:#f4f6f9;color:var(--ink);font:13px 'DM Sans',Arial,sans-serif}.topbar{min-height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:5}.brand{display:flex;align-items:center;gap:9px;color:var(--navy);text-decoration:none}.brand-mark{width:31px;height:31px;border-radius:9px;background:var(--red);color:#fff;display:grid;place-items:center;font:800 22px Manrope}.brand strong{font:800 19px Manrope;letter-spacing:-1px}.brand small{display:block;color:#778598;font-size:8px;letter-spacing:1.2px}.topbar nav{display:flex;gap:25px}.topbar nav a{color:#58677a;text-decoration:none;font-weight:600;font-size:12px}.topbar nav a:hover{color:var(--red)}.profile{color:var(--muted);font-size:11px}.app-shell{width:100%;max-width:1800px;margin:0 auto;padding:18px 22px 12px}.page-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.eyebrow{margin:0 0 3px;color:var(--red);font-size:9px;font-weight:700;letter-spacing:1.4px}.page-head h1{font:800 21px Manrope;color:var(--navy);margin:0}.muted{color:var(--muted);font-size:11px;margin:4px 0 0}.btn{border:1px solid transparent;border-radius:6px;padding:8px 13px;font:700 11px 'DM Sans';text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}.btn.primary{background:var(--red);color:#fff}.btn.secondary{background:#fff;border-color:#d4dce5;color:var(--navy)}.btn:hover{filter:brightness(.97)}.panel{background:#fff;border:1px solid var(--line);border-radius:9px;padding:13px;margin-bottom:12px;box-shadow:0 2px 8px #172b4d08}.panel h2{font:700 14px Manrope;color:var(--navy);margin:0 0 10px}.employee-grid{display:grid;grid-template-columns:repeat(4,minmax(145px,1fr));gap:9px}.field,label{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;color:#536276;min-width:0}input,select,textarea{width:100%;height:35px;padding:6px 8px;border:1px solid #cfd8e3;border-radius:5px;background:#fff;color:#27364a;font:500 12px 'DM Sans';outline:none;min-width:0;max-width:100%}input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 0 2px #087f8c18}.gcc-code{background:#f0f3f6;color:#516174;font-weight:700}.expense-head,.heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.expense-head h2,.heading h2{margin:0}.rows-scroll{width:100%;overflow:visible;padding-bottom:2px}.expense-row{width:100%;min-width:0;max-width:100%;border:1px solid #dfe5ec;border-radius:7px;background:#fff;padding:9px;margin-bottom:9px}.row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;color:var(--navy);font-size:11px;font-weight:700}.remove-row{border:0;background:transparent;color:var(--red);font:600 10px 'DM Sans';cursor:pointer}.expense-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:8px;align-items:end;width:100%}.expense-grid label{font-size:9px;white-space:normal;overflow-wrap:anywhere}.expense-grid input,.expense-grid select{height:34px;font-size:11px;padding:5px 6px}.attachment-picker{min-width:0;white-space:normal!important}.attachment-picker input{height:34px;padding:4px;font-size:10px;max-width:100%}.attachment-picker small{font-size:8px;color:var(--muted);font-weight:400;white-space:normal;display:block;margin-top:3px}.totals{display:flex;justify-content:flex-end;gap:20px;padding:8px 3px 0;color:#59697c;font-size:11px}.totals strong{color:var(--navy);margin-left:4px}.note{background:#fff8f0;border:1px solid #f1dfca;border-radius:7px;padding:9px 12px;font-size:10px;color:#6c5a47;margin:10px 0}.note ul{margin:4px 0 0;padding-left:17px}.actions{display:flex;justify-content:flex-end;gap:8px;margin:13px 0 20px}.footer{display:flex;justify-content:space-between;color:#8995a4;font-size:9px;border-top:1px solid var(--line);padding:11px 2px}.messages{margin-bottom:12px}.msg{padding:9px 12px;border-radius:6px;background:#edf7f4;color:#17664f;font-size:11px}.employee-grid label{font-size:10px}
-/* Zoom-aware wrapping: the grid responds to the available CSS viewport, not a fixed row width. */
-@media(max-width:1250px){.app-shell{padding:15px}.employee-grid{grid-template-columns:repeat(2,minmax(130px,1fr))}.expense-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr))}.topbar{padding:0 15px}}
-@media(max-width:760px){.topbar{height:auto;min-height:55px;flex-wrap:wrap;gap:8px;padding:10px 13px}.topbar nav{order:3;width:100%;gap:16px;flex-wrap:wrap}.profile{display:none}.app-shell{padding:12px}.page-head{align-items:flex-start;gap:8px;flex-wrap:wrap}.page-head h1{font-size:18px}.employee-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.expense-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.totals{justify-content:space-between;gap:8px}.footer{gap:8px;flex-wrap:wrap}}
-@media(max-width:420px){.employee-grid,.expense-grid{grid-template-columns:minmax(0,1fr)}.panel{padding:10px}.actions{flex-wrap:wrap}.actions>*{flex:1}}
-</style></head><body>
-<header class="topbar"><a class="brand" href="{{ url_for('home') }}"><span class="brand-mark">i</span><span><strong>intact</strong><small>EXPENSE SERVICES</small></span></a><nav><a href="{{ url_for('home') }}">Overview</a><a href="{{ url_for('history') }}">Reimbursement history</a></nav><span class="profile">Employee portal</span></header><main class="app-shell">
-{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="messages">{% for category,message in messages %}<div class="msg">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
-
-
-<div class="page-head"><div><p class="eyebrow">REIMBURSEMENT</p><h1>{{ 'New Sundry Reimbursement Form' if mode=='new' else 'Edit Reimbursement Form' }}</h1><p class="muted">Form number: <strong>{{ form_no }}</strong></p></div><a class="btn secondary" href="{{ url_for('history') }}">Back to History</a></div>
-<form method="post" enctype="multipart/form-data" id="expense-form"><input type="hidden" name="FormNo" value="{{ form_no }}">
-<section class="panel"><h2>Employee details</h2><div class="employee-grid">
-<label>Employee Name<input name="EName" required value="{{ header.get('EName','') }}"></label><label>Employee ID<input name="EmpID" required value="{{ header.get('EmpID','') }}"></label><label>Line Manager<input name="Manager" value="{{ header.get('Manager','') }}"></label><label>Form Date<input type="date" name="FormDate" required value="{{ header.get('FormDate',today) }}"></label></div></section>
-<section class="panel"><div class="heading"><div><h2>Expense entries</h2><p class="muted">Multiple files per row are merged into one PDF.</p></div><button class="btn secondary" type="button" id="add-row">＋ Add Row</button></div>
-<div id="rows">
-{% for row in rows %}
-<div class="expense-row row"><div class="row-head rowhead"><strong>Expense entry {{ loop.index }}</strong><button class="textbtn remove-row" type="button">Remove row</button></div>
-<input type="hidden" name="Item[]" value="{{ row.Item }}">
-<div class="expense-grid">
-<label>Description<select name="Description[]" class="description-select" required>{% for x in descriptions %}<option value="{{ x }}" {% if row.Description==x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
-<label>GCC Expense Code<input name="GCCExpCode[]" class="gcc-code" value="{{ row.GCCExpCode or '' }}" readonly></label><label>Expense Date<input type="date" name="ExpenseDate[]" value="{{ row.ExpenseDate or '' }}"></label>
-<label>Bill No.<input name="BillNo[]" value="{{ row.BillNo or '' }}"></label><label>Bill Amount (INR)<input class="bill" type="number" min="0" step="0.01" name="BillAmount[]" value="{{ row.BillAmount or 0 }}"></label>
-<label>Claim Amount (INR)<input class="claim" type="number" min="0" step="0.01" name="ClaimAmount[]" value="{{ row.ClaimAmount or 0 }}"></label>
-<label>Chargeable<select name="Chargeable[]"><option value="NO" {% if row.Chargeable!='YES' %}selected{% endif %}>No</option><option value="YES" {% if row.Chargeable=='YES' %}selected{% endif %}>Yes</option></select></label>
-<label>Client Name<select name="ClientName[]">{% for x in clients %}<option value="{{ '' if x=='Select Client' else x }}" {% if (row.ClientName or '') == ('' if x=='Select Client' else x) %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
-<label>Comments<input name="Comments[]" value="{{ row.Comments or '' }}"></label>
-<label class="attachment-picker">Attachments<input type="file" name="attachments_{{ loop.index0 }}" multiple accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"><small>Select PDFs and images together</small></label></div>
-{% if row.DocumentID %}<p class="muted">Current PDF: {{ row.DocumentID }}</p>{% endif %}</div>
-{% endfor %}
-</div><div class="totals">Bill total: <strong id="bill-total">₹0.00</strong> Claim total: <strong id="claim-total">₹0.00</strong></div></section>
-<section class="note"><strong>Note</strong><ul><li>One merged PDF is created per expense entry.</li><li>Multiple attachments for one entry are merged in selected order.</li><li>Demo dropdown values are placeholders; replace them with your actual static options.</li></ul></section>
-<div class="actions"><a class="btn secondary" href="{{ url_for('history') }}">Cancel</a><button class="btn primary" type="submit" onclick="return confirm('Save this reimbursement form?')">{{ 'Save Changes' if mode=='edit' else 'Submit Form' }}</button></div></form>
-<template id="row-template"><div class="expense-row row"><div class="row-head rowhead"><strong>Expense entry</strong><button class="textbtn remove-row" type="button">Remove row</button></div><input type="hidden" name="Item[]" value="1"><div class="expense-grid">
-<label>Description<select name="Description[]" class="description-select" required>{% for x in descriptions %}<option value="{{ x }}">{{ x }}</option>{% endfor %}</select></label><label>GCC Expense Code<input name="GCCExpCode[]" class="gcc-code" readonly></label><label>Expense Date<input type="date" name="ExpenseDate[]"></label>
-<label>Bill No.<input name="BillNo[]"></label><label>Bill Amount (INR)<input class="bill" type="number" min="0" step="0.01" name="BillAmount[]" value="0"></label><label>Claim Amount (INR)<input class="claim" type="number" min="0" step="0.01" name="ClaimAmount[]" value="0"></label>
-<label>Chargeable<select name="Chargeable[]"><option value="NO">No</option><option value="YES">Yes</option></select></label><label>Client Name<select name="ClientName[]">{% for x in clients %}<option value="{{ '' if x=='Select Client' else x }}">{{ x }}</option>{% endfor %}</select></label><label>Comments<input name="Comments[]"></label><label class="attachment-picker">Attachments<input type="file" name="attachments_" multiple accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"><small>Select PDFs and images together</small></label></div></div></template>
-<script id="gcc-code-map" type="application/json">{{ gcc_codes|tojson }}</script>
-<script src="{{ url_for('static', filename='js/form.js') }}" defer></script>
-
-<footer class="footer"><span>Internal expense management</span><span>Secure reimbursement workspace</span></footer></main></body></html>
+.form-page{max-width:1500px;margin:auto}.form-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0 16px}.form-head h1{font-size:23px;margin:0}.form-head p{font-size:12px;color:#687985;margin:5px 0}.form-panel{background:#fff;border:1px solid #e2e8eb;border-radius:10px;padding:14px;margin-bottom:12px}.form-panel h2{font-size:15px;margin:0 0 12px}.form-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px}.form-grid label,.expense-field label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:#536672}.form-grid input,.expense-field input,.expense-field select{height:34px;border:1px solid #d5dfe4;border-radius:6px;padding:0 8px;font-size:12px;min-width:0;width:100%;box-sizing:border-box}.expense-list{display:grid;gap:10px}.expense-row{border:1px solid #e4e9ec;border-radius:8px;padding:10px;background:#fbfcfc}.expense-row-grid{display:grid;grid-template-columns:repeat(5,minmax(125px,1fr));gap:9px}.expense-field.wide{grid-column:span 2}.expense-field input[type=file]{padding:6px;height:auto;background:#fff}.row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.row-head strong{font-size:12px}.form-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:7px;padding:9px 14px;font-size:12px;font-weight:750;text-decoration:none;cursor:pointer}.btn-red{background:#c8102e;color:#fff}.btn-light{background:#f2f5f6;color:#344b59;border:1px solid #dce3e7}.btn-remove{background:#fff1f2;color:#b42332;border:1px solid #f0cfd3;padding:5px 9px}.form-note{font-size:10px;color:#77858e;margin-top:5px}
+@media(max-width:950px){.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.expense-row-grid{grid-template-columns:repeat(3,minmax(120px,1fr))}}
+@media(max-width:620px){.form-head{align-items:flex-start;flex-direction:column}.form-grid,.expense-row-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.expense-field.wide{grid-column:span 2}}
+@media(max-width:390px){.form-grid,.expense-row-grid{grid-template-columns:1fr}.expense-field.wide{grid-column:span 1}}
+</style>
+<div class="form-page">
+  <div class="form-head"><div><p class="eyebrow">REIMBURSEMENT</p><h1>{{ 'New Sundry Reimbursement Form' if mode=='new' else 'Edit Reimbursement Form' }}</h1><p>Form number: <strong>{{ form_no }}</strong></p></div><a class="btn btn-light" href="{{ url_for('history') }}">Back to History</a></div>
+  <form method="post" enctype="multipart/form-data" id="expense-form">
+    <input type="hidden" name="FormNo" value="{{ form_no }}">
+    <section class="form-panel"><h2>Employee details</h2><div class="form-grid">
+      <label>Employee Name<input name="EName" required value="{{ header.get('EName','') }}"></label>
+      <label>Employee ID<input name="EmpID" required value="{{ header.get('EmpID','') }}"></label>
+      <label>Line Manager<input name="Manager" value="{{ header.get('Manager','') }}"></label>
+      <label>Form Date<input type="date" name="FormDate" value="{{ header.get('FormDate',today) }}"></label>
+    </div></section>
+    <section class="form-panel"><div class="row-head"><h2>Expense entries</h2><button type="button" class="btn btn-light" id="add-expense">＋ Add expense</button></div>
+      <div class="expense-list" id="expense-list">
+      {% for r in rows %}
+      <article class="expense-row">
+        <div class="row-head"><strong>Expense <span class="row-number">{{ loop.index }}</span></strong><button type="button" class="btn btn-remove remove-expense">Remove</button></div>
+        <input type="hidden" name="Item[]" value="{{ r.Item }}">
+        <div class="expense-row-grid">
+          <div class="expense-field"><label>Description</label><select name="Description[]" class="description" required>{% for d in descriptions %}<option value="{{ d }}" {% if r.Description==d %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></div>
+          <div class="expense-field"><label>GCC Expense Code</label><input name="GCCExpCode[]" class="gcc-code" value="{{ gcc_codes.get(r.Description,'') }}" readonly></div>
+          <div class="expense-field"><label>Expense Date</label><input type="date" name="ExpenseDate[]" value="{{ r.ExpenseDate or '' }}"></div>
+          <div class="expense-field"><label>Bill No.</label><input name="BillNo[]" value="{{ r.BillNo or '' }}"></div>
+          <div class="expense-field"><label>Bill Amount (INR)</label><input type="number" step="0.01" min="0" name="BillAmount[]" value="{{ r.BillAmount or 0 }}"></div>
+          <div class="expense-field"><label>Claim Amount (INR)</label><input type="number" step="0.01" min="0" name="ClaimAmount[]" value="{{ r.ClaimAmount or 0 }}"></div>
+          <div class="expense-field"><label>Chargeable</label><select name="Chargeable[]"><option value="NO" {% if (r.Chargeable or 'NO')=='NO' %}selected{% endif %}>No</option><option value="YES" {% if r.Chargeable=='YES' %}selected{% endif %}>Yes</option></select></div>
+          <div class="expense-field"><label>Client Name</label><select name="ClientName[]">{% for c in clients %}<option value="{{ c }}" {% if r.ClientName==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+          <div class="expense-field wide"><label>Comments</label><input name="Comments[]" value="{{ r.Comments or '' }}"></div>
+          <div class="expense-field wide"><label>Attachments (PDF, JPG, PNG)</label><input type="file" name="attachments_{{ loop.index0 }}" accept=".pdf,.jpg,.jpeg,.png" multiple><span class="form-note">Select PDFs and images together. They will be merged into one PDF for this expense.</span></div>
+        </div>
+      </article>
+      {% endfor %}
+      </div>
+    </section>
+    <div class="form-actions"><a class="btn btn-light" href="{{ url_for('history') }}">Cancel</a><button class="btn btn-red" type="submit">Save Reimbursement</button></div>
+  </form>
+</div>
+<script>
+(() => {
+ const mapping = {{ gcc_codes|tojson }};
+ const list = document.getElementById('expense-list');
+ const add = document.getElementById('add-expense');
+ function updateRow(row) {
+   const select = row.querySelector('.description');
+   const code = row.querySelector('.gcc-code');
+   code.value = mapping[select.value] || '';
+ }
+ function renumber() {
+   [...list.querySelectorAll('.expense-row')].forEach((row,i) => {
+     row.querySelector('.row-number').textContent = i+1;
+     row.querySelector('input[type=file]').name = 'attachments_' + i;
+     row.querySelector('input[name="Item[]"]').value = i+1;
+   });
+ }
+ list.addEventListener('change', e => { if(e.target.matches('.description')) updateRow(e.target.closest('.expense-row')); });
+ list.addEventListener('click', e => {
+   if(e.target.matches('.remove-expense')) {
+     const rows=list.querySelectorAll('.expense-row');
+     if(rows.length>1){e.target.closest('.expense-row').remove();renumber();}
+   }
+ });
+ add.addEventListener('click', () => {
+   const source=list.querySelector('.expense-row');
+   const clone=source.cloneNode(true);
+   clone.querySelectorAll('input').forEach(input => { if(input.type==='file') input.value=''; else if(input.name==='Item[]') input.value=list.querySelectorAll('.expense-row').length+1; else if(input.name==='BillAmount[]'||input.name==='ClaimAmount[]') input.value='0'; else input.value=''; });
+   clone.querySelector('.description').value='Meals';
+   clone.querySelector('.gcc-code').value=mapping['Meals'] || '';
+   clone.querySelector('select[name="Chargeable[]"]').value='NO';
+   list.appendChild(clone);renumber();
+ });
+ renumber();
+})();
+</script>
+{% endblock %}

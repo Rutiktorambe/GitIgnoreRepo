@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-
-<section class="hero"><p class="eyebrow">EXPENSE MANAGEMENT</p><h1>Sundry Reimbursement</h1><p class="muted">Create a reimbursement form or review previously submitted forms.</p></section>
-<div class="cards"><a class="card" href="{{ url_for('new_form') }}"><span style="font-size:30px">＋</span><h2>New Form</h2><p>Enter expense details and attach supporting documents.</p><span>Create reimbursement →</span></a>
-<a class="card" href="{{ url_for('history') }}"><span style="font-size:30px">▤</span><h2>History</h2><p>View, edit or delete saved reimbursement forms.</p><span>Open history →</span></a></div>
-
+<section class="hero">
+  <p class="eyebrow">EXPENSE MANAGEMENT</p>
+  <h1>Sundry Reimbursement</h1>
+  <p>Create a reimbursement form or review previously submitted forms.</p>
+</section>
+<div class="home-cards">
+  <a class="home-card" href="{{ url_for('new_form') }}"><span class="card-icon">＋</span><h2>New Form</h2><p>Enter expense details and attach supporting documents.</p><strong>Create reimbursement →</strong></a>
+  <a class="home-card" href="{{ url_for('history') }}"><span class="card-icon">▤</span><h2>History</h2><p>View, edit or delete saved reimbursement forms.</p><strong>Open history →</strong></a>
+</div>
 {% endblock %}

@@ -1,7 +1,4 @@
 {% extends "base.html" %}
 {% block content %}
-
-<section class="panel confirm"><h1>Delete reimbursement form?</h1><p>You are about to delete <strong>{{ form_no }}</strong>, all its expense entries and the files in its form folder. This cannot be undone.</p>
-<form method="post"><div class="right" style="justify-content:center"><a class="btn secondary" href="{{ url_for('history') }}">Cancel</a><button class="btn danger" type="submit">Delete Form</button></div></form></section>
-
+<section class="panel confirm-panel"><p class="eyebrow">CONFIRM ACTION</p><h1>Delete reimbursement form?</h1><p>You are about to delete <strong>{{ form_no }}</strong>, all its expense entries and its uploaded files. This action cannot be undone.</p><form method="post" class="actions"><a class="btn btn-light" href="{{ url_for('history') }}">Cancel</a><button class="btn btn-red" type="submit">Delete Form</button></form></section>
 {% endblock %}
