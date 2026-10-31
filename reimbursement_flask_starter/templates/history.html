@@ -1,221 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-/* Reimbursement history — compact Intact-inspired styling */
-.history-page{max-width:1500px;margin:0 auto;color:#203543}
-.history-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:8px 0 18px}
-.history-eyebrow{font-size:10px;letter-spacing:.12em;font-weight:800;color:#c8102e;margin:0 0 5px}
-.history-head h1{font-size:24px;line-height:1.2;margin:0;font-weight:750}
-.history-head p{font-size:12px;color:#71808a;margin:5px 0 0}
-.history-head-actions{display:flex;gap:8px;flex-wrap:wrap}
-.history-head-actions a{font-size:12px;padding:8px 13px;border-radius:7px;text-decoration:none}
-.history-btn-primary{background:#c8102e;color:#fff;border:1px solid #c8102e}
-.history-btn-primary:hover{background:#a90d26}
-.history-btn-light{background:#fff;color:#344b59;border:1px solid #d9e0e4}
-.history-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e4e9ec;border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(20,40,55,.035)}
-.history-filters{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
-.history-control{display:flex;flex-direction:column;gap:4px}
-.history-control label{font-size:10px;font-weight:750;color:#5e707c}
-.history-control input,.history-control select{height:34px;min-width:145px;border:1px solid #d8e0e5;border-radius:6px;background:#fff;padding:0 9px;color:#243b49;font-size:12px;outline:none}
-.history-control input:focus,.history-control select:focus{border-color:#c8102e;box-shadow:0 0 0 2px rgba(200,16,46,.09)}
-.history-control.search input{min-width:220px}
-.history-sort{display:flex;align-items:center;gap:7px}
-.history-sort span{font-size:10px;color:#647681;font-weight:700}
-.history-sort button{height:32px;padding:0 10px;border:1px solid #d8e0e5;border-radius:6px;background:#fff;color:#435866;font-size:11px;cursor:pointer}
-.history-sort button.active{background:#eaf1f5;border-color:#b9cbd5;color:#17394b;font-weight:750}
-.history-panel{background:#fff;border:1px solid #e3e9ed;border-radius:10px;padding:10px;box-shadow:0 2px 8px rgba(20,40,55,.035)}
-.history-table-wrap{width:100%;overflow-x:auto}
-.history-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px}
-.history-table th{background:#f3f6f7;color:#526672;font-size:10px;font-weight:800;text-align:left;white-space:nowrap;padding:10px 9px;border-bottom:1px solid #e2e8eb}
-.history-table th:first-child{border-radius:7px 0 0 0}
-.history-table th:last-child{border-radius:0 7px 0 0}
-.history-table td{padding:10px 9px;border-bottom:1px solid #edf0f2;vertical-align:middle;color:#2a414e}
-.history-table tbody tr:hover{background:#fbfcfd}
-.history-formno{font-weight:800;color:#203b4b;white-space:nowrap}
-.history-muted{color:#75848d}
-.history-money{font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums}
-.history-status{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:20px;background:#edf6f2;color:#267354;font-size:10px;font-weight:800;white-space:nowrap}
-.history-status:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-.history-status.pending{background:#fff5e7;color:#96620d}
-.history-status.rejected{background:#fff0f0;color:#b42332}
-.history-actions{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.history-actions a{display:inline-flex;align-items:center;justify-content:center;min-width:48px;padding:5px 8px;border-radius:5px;border:1px solid #dce3e7;color:#405866;text-decoration:none;font-size:10px;font-weight:750}
-.history-actions a:hover{background:#f1f5f7}
-.history-actions a.edit{color:#12618b;border-color:#c9e0ed}
-.history-actions a.delete{color:#b42332;border-color:#f0cfd3}
-.history-actions a.delete:hover{background:#fff2f3}
-.history-empty{padding:28px!important;text-align:center;color:#71808a!important}
-.history-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 3px 1px;color:#71808a;font-size:10px}
-@media(max-width:850px){
- .history-head{align-items:flex-start}
- .history-table{min-width:900px}
- .history-toolbar{align-items:stretch}
- .history-filters{width:100%}
- .history-control.search{flex:1}
- .history-control.search input{width:100%;min-width:180px}
-}
-@media(max-width:560px){
- .history-head{flex-direction:column}
- .history-head-actions{width:100%}
- .history-head-actions a{flex:1;text-align:center}
- .history-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
- .history-control input,.history-control select{min-width:0;width:100%}
- .history-control.search{grid-column:1/-1}
- .history-sort{justify-content:flex-end}
-}
+.history-page{max-width:1500px;margin:0 auto;color:#203543}.history-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:8px 0 18px}.history-eyebrow{font-size:10px;letter-spacing:.12em;font-weight:800;color:#c8102e;margin:0 0 5px}.history-head h1{font-size:24px;margin:0;font-weight:750}.history-head p{font-size:12px;color:#71808a;margin:5px 0 0}.history-head-actions,.history-actions,.history-sort{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.history-head-actions a,.history-actions a{font-size:11px;padding:7px 10px;border-radius:6px;text-decoration:none;border:1px solid #d9e0e4;color:#344b59;background:#fff}.history-head-actions .primary{background:#c8102e;color:#fff;border-color:#c8102e}.history-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e4e9ec;border-radius:10px;padding:12px;margin-bottom:12px}.history-filters{display:flex;align-items:end;gap:9px;flex-wrap:wrap;flex:1}.history-control{display:flex;flex-direction:column;gap:4px}.history-control label{font-size:10px;font-weight:750;color:#5e707c}.history-control input,.history-control select{height:33px;min-width:125px;border:1px solid #d8e0e5;border-radius:6px;background:#fff;padding:0 8px;color:#243b49;font-size:11px}.history-control.search input{min-width:190px}.history-clear,.history-sort button{height:33px;padding:0 10px;border:1px solid #d8e0e5;border-radius:6px;background:#fff;color:#435866;font-size:11px;cursor:pointer}.history-sort span{font-size:10px;color:#647681;font-weight:700}.history-sort button.active{background:#eaf1f5;border-color:#b9cbd5;font-weight:750}.history-panel{background:#fff;border:1px solid #e3e9ed;border-radius:10px;padding:10px}.history-table-wrap{width:100%;overflow-x:auto}.history-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px}.history-table th{background:#f3f6f7;color:#526672;font-size:10px;font-weight:800;text-align:left;white-space:nowrap;padding:10px 9px;border-bottom:1px solid #e2e8eb}.history-table td{padding:10px 9px;border-bottom:1px solid #edf0f2;vertical-align:middle;color:#2a414e}.history-table tbody tr:hover{background:#fbfcfd}.history-formno{font-weight:800;white-space:nowrap}.history-money{font-weight:750;white-space:nowrap}.history-status{display:inline-flex;padding:4px 8px;border-radius:20px;background:#edf6f2;color:#267354;font-size:10px;font-weight:800;white-space:nowrap}.history-status.pending{background:#fff5e7;color:#96620d}.history-status.rejected{background:#fff0f0;color:#b42332}.history-actions a.edit{color:#12618b}.history-actions a.delete{color:#b42332}.history-empty{text-align:center;padding:25px!important;color:#71808a!important}.history-footer{display:flex;justify-content:space-between;padding:10px 3px 1px;color:#71808a;font-size:10px}@media(max-width:1050px){.history-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.history-control input,.history-control select{width:100%;min-width:0}.history-control.search{grid-column:span 2}.history-table{min-width:1100px}}@media(max-width:620px){.history-head{align-items:flex-start;flex-direction:column}.history-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.history-control.search{grid-column:1/-1}.history-sort{width:100%;justify-content:flex-end}}
 </style>
-
 <div class="history-page">
-  <header class="history-head">
-    <div>
-      <p class="history-eyebrow">YOUR SUBMISSIONS</p>
-      <h1>Reimbursement History</h1>
-      <p>Review submitted forms, check claim totals, or manage an existing reimbursement.</p>
-    </div>
-    <div class="history-head-actions">
-      <a class="history-btn-light" href="{{ url_for('home') }}">Home</a>
-      <a class="history-btn-primary" href="{{ url_for('new_form') }}">＋ New Form</a>
-    </div>
-  </header>
-
-  <section class="history-toolbar" aria-label="History filters">
-    <div class="history-filters">
-      <div class="history-control search">
-        <label for="historySearch">Search reimbursements</label>
-        <input id="historySearch" type="search" placeholder="Form number, employee or ID...">
-      </div>
-      <div class="history-control">
-        <label for="historyStatus">Payment / Form Status</label>
-        <select id="historyStatus">
-          <option value="">All statuses</option>
-          {% for f in forms|unique(attribute='status') %}
-            {% if f.status %}<option value="{{ f.status|lower }}">{{ f.status }}</option>{% endif %}
-          {% endfor %}
-        </select>
-      </div>
-      <button type="button" class="history-sort-button" id="clearHistoryFilters"
-        style="height:34px;padding:0 11px;border:1px solid #d8e0e5;border-radius:6px;background:#fff;color:#435866;font-size:11px;cursor:pointer">
-        Clear filters
-      </button>
-    </div>
-    <div class="history-sort">
-      <span>Sort by:</span>
-      <button type="button" id="sortDate" class="active" data-sort="date">Date ↓</button>
-      <button type="button" id="sortAmount" data-sort="amount">Amount</button>
-    </div>
-  </section>
-
-  <section class="history-panel">
-    <div class="history-table-wrap">
-      <table class="history-table" id="historyTable">
-        <thead>
-          <tr>
-            <th>Form No.</th>
-            <th>Employee</th>
-            <th>Employee ID</th>
-            <th>Date</th>
-            <th>Entries</th>
-            <th>Total Amount (INR)</th>
-            <th>Form Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="historyTableBody">
-          {% for f in forms %}
-          <tr data-form="{{ f.form_no|lower }}"
-              data-employee="{{ (f.name or '')|lower }}"
-              data-empid="{{ (f.emp_id or '')|lower }}"
-              data-status="{{ (f.status or 'Submitted')|lower }}"
-              data-date="{{ f.form_date or '' }}"
-              data-amount="{{ f.total or 0 }}">
-            <td><span class="history-formno">{{ f.form_no }}</span></td>
-            <td>{{ f.name or '—' }}</td>
-            <td>{{ f.emp_id or '—' }}</td>
-            <td>{{ f.form_date or '—' }}</td>
-            <td>{{ f.count or 0 }}</td>
-            <td class="history-money">₹{{ '%.2f'|format(f.total or 0) }}</td>
-            <td>
-              {% set status = (f.status or 'Submitted')|lower %}
-              <span class="history-status {% if 'pending' in status or 'submitted' in status %}pending{% elif 'reject' in status %}rejected{% endif %}">
-                {{ f.status or 'Submitted' }}
-              </span>
-            </td>
-            <td>
-              <div class="history-actions">
-                <a href="{{ url_for('form_action', form_no=f.form_no, action='view') }}">View</a>
-                <a class="edit" href="{{ url_for('form_action', form_no=f.form_no, action='edit') }}">Edit</a>
-                <a class="delete" href="{{ url_for('form_action', form_no=f.form_no, action='delete') }}">Delete</a>
-              </div>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="8" class="history-empty">No reimbursement forms found. Select “New Form” to create one.</td></tr>
-          {% endfor %}
-          <tr id="historyNoMatch" hidden><td colspan="8" class="history-empty">No records match the selected filters.</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="history-footer">
-      <span id="historyCount">{{ forms|length }} reimbursement form(s)</span>
-      <span>Amounts shown in INR</span>
-    </div>
-  </section>
+<header class="history-head"><div><p class="history-eyebrow">YOUR SUBMISSIONS</p><h1>Reimbursement History</h1><p>Review submitted forms, approval progress and claim totals.</p></div><div class="history-head-actions"><a href="{{ url_for('home') }}">Home</a><a class="primary" href="{{ url_for('new_form') }}">＋ New Form</a></div></header>
+<section class="history-toolbar" aria-label="History filters">
+<div class="history-filters">
+<div class="history-control search"><label for="historySearch">Search</label><input id="historySearch" type="search" placeholder="Form number, employee or ID"></div>
+<div class="history-control"><label for="ManagerApproval">Manager Approval</label><select id="ManagerApproval"><option value="">All</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Not Required</option></select></div>
+<div class="history-control"><label for="HRApproval">HR Approval</label><select id="HRApproval"><option value="">All</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Not Required</option></select></div>
+<div class="history-control"><label for="SignatoryApproval">Signatory Approval</label><select id="SignatoryApproval"><option value="">All</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Not Required</option></select></div>
+<div class="history-control"><label for="TeamHeadApproval">Team Head Approval</label><select id="TeamHeadApproval"><option value="">All</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Not Required</option></select></div>
+<div class="history-control"><label for="AdminApproval">Admin Approval</label><select id="AdminApproval"><option value="">All</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Not Required</option></select></div>
+<div class="history-control"><label for="PaymentStatus">Payment / Form Status</label><select id="PaymentStatus"><option value="">All</option>{% for s in statuses %}<option value="{{ s|lower }}">{{ s }}</option>{% endfor %}</select></div>
+<button type="button" id="clearHistoryFilters" class="history-clear">Clear Filters</button>
 </div>
-
+<div class="history-sort"><span>Sort by:</span><button type="button" id="sortDate" class="active">Date ↓</button><button type="button" id="sortAmount">Amount</button></div>
+</section>
+<section class="history-panel"><div class="history-table-wrap"><table class="history-table"><thead><tr><th>Form No.</th><th>Employee</th><th>Employee ID</th><th>Date</th><th>Entries</th><th>Total Amount (INR)</th><th>Manager</th><th>HR</th><th>Signatory</th><th>Team Head</th><th>Admin</th><th>Payment / Form Status</th><th>Action</th></tr></thead><tbody id="historyTableBody">
+{% for f in forms %}
+<tr data-form="{{ f.form_no|lower }}" data-employee="{{ (f.name or '')|lower }}" data-empid="{{ (f.emp_id or '')|lower }}" data-status="{{ (f.status or 'Submitted')|lower }}" data-manager-approval="{{ (f.manager_approval or 'Pending')|lower }}" data-hr-approval="{{ (f.hr_approval or 'Pending')|lower }}" data-signatory-approval="{{ (f.signatory_approval or 'Pending')|lower }}" data-teamhead-approval="{{ (f.teamhead_approval or 'Pending')|lower }}" data-admin-approval="{{ (f.admin_approval or 'Pending')|lower }}" data-payment-status="{{ (f.status or 'Submitted')|lower }}" data-date="{{ f.form_date or '' }}" data-amount="{{ f.total or 0 }}">
+<td><span class="history-formno">{{ f.form_no }}</span></td><td>{{ f.name or '—' }}</td><td>{{ f.emp_id or '—' }}</td><td>{{ f.form_date_display or f.form_date or '—' }}</td><td>{{ f.count or 0 }}</td><td class="history-money">₹{{ '%.2f'|format(f.total or 0) }}</td>
+{% for val in [f.manager_approval, f.hr_approval, f.signatory_approval, f.teamhead_approval, f.admin_approval] %}{% set st=(val or 'Pending')|lower %}<td><span class="history-status {% if st=='pending' %}pending{% elif st=='rejected' %}rejected{% endif %}">{{ val or 'Pending' }}</span></td>{% endfor %}
+<td>{{ f.status or 'Submitted' }}</td><td><div class="history-actions"><a href="{{ url_for('form_action',form_no=f.form_no,action='view') }}">View</a><a class="edit" href="{{ url_for('form_action',form_no=f.form_no,action='edit') }}">Edit</a><a class="delete" href="{{ url_for('form_action',form_no=f.form_no,action='delete') }}">Delete</a></div></td></tr>
+{% else %}<tr><td colspan="13" class="history-empty">No reimbursement forms found.</td></tr>{% endfor %}
+<tr id="historyNoMatch" hidden><td colspan="13" class="history-empty">No records match the selected filters.</td></tr>
+</tbody></table></div><div class="history-footer"><span id="historyCount">{{ forms|length }} reimbursement form(s)</span><span>Amounts shown in INR</span></div></section>
+</div>
 <script>
 (() => {
-  const body = document.getElementById('historyTableBody');
-  if (!body) return;
-  const search = document.getElementById('historySearch');
-  const status = document.getElementById('historyStatus');
-  const clear = document.getElementById('clearHistoryFilters');
-  const dateBtn = document.getElementById('sortDate');
-  const amountBtn = document.getElementById('sortAmount');
-  const count = document.getElementById('historyCount');
-  const noMatch = document.getElementById('historyNoMatch');
-  let sortMode = 'date';
-  const rows = () => Array.from(body.querySelectorAll('tr[data-form]'));
-
-  function applyFilters() {
-    const q = search.value.trim().toLowerCase();
-    const s = status.value.toLowerCase();
-    let visible = 0;
-    rows().forEach(row => {
-      const matchesText = [row.dataset.form, row.dataset.employee, row.dataset.empid]
-        .some(value => (value || '').includes(q));
-      const matchesStatus = !s || row.dataset.status === s;
-      const show = matchesText && matchesStatus;
-      row.hidden = !show;
-      if (show) visible++;
-    });
-    noMatch.hidden = visible !== 0;
-    count.textContent = `${visible} of ${rows().length} reimbursement form(s)`;
-  }
-
-  function sortRows(mode) {
-    sortMode = mode;
-    const sorted = rows().sort((a,b) => {
-      if (mode === 'amount') return Number(b.dataset.amount || 0) - Number(a.dataset.amount || 0);
-      return (b.dataset.date || '').localeCompare(a.dataset.date || '');
-    });
-    sorted.forEach(row => body.insertBefore(row, noMatch));
-    dateBtn.classList.toggle('active', mode === 'date');
-    amountBtn.classList.toggle('active', mode === 'amount');
-    dateBtn.textContent = mode === 'date' ? 'Date ↓' : 'Date';
-    amountBtn.textContent = mode === 'amount' ? 'Amount ↓' : 'Amount';
-  }
-
-  search.addEventListener('input', applyFilters);
-  status.addEventListener('change', applyFilters);
-  clear.addEventListener('click', () => {
-    search.value = '';
-    status.value = '';
-    sortRows('date');
-    applyFilters();
+ const body=document.getElementById('historyTableBody'); if(!body)return;
+ const search=document.getElementById('historySearch');
+ const ids={manager:'ManagerApproval',hr:'HRApproval',signatory:'SignatoryApproval',teamhead:'TeamHeadApproval',admin:'AdminApproval',payment:'PaymentStatus'};
+ const filters=Object.fromEntries(Object.entries(ids).map(([k,id])=>[k,document.getElementById(id)]));
+ const clear=document.getElementById('clearHistoryFilters'),dateBtn=document.getElementById('sortDate'),amountBtn=document.getElementById('sortAmount');
+ const count=document.getElementById('historyCount'),noMatch=document.getElementById('historyNoMatch');
+ const rows=()=>Array.from(body.querySelectorAll('tr[data-form]'));
+ function applyFilters(){
+  const q=search.value.trim().toLowerCase(), selected=Object.fromEntries(Object.entries(filters).map(([k,e])=>[k,e.value.trim().toLowerCase()]));
+  let visible=0;
+  rows().forEach(row=>{
+   const textMatch=[row.dataset.form,row.dataset.employee,row.dataset.empid].some(v=>(v||'').includes(q));
+   const filterMatch=(!selected.manager||row.dataset.managerApproval===selected.manager)&&(!selected.hr||row.dataset.hrApproval===selected.hr)&&(!selected.signatory||row.dataset.signatoryApproval===selected.signatory)&&(!selected.teamhead||row.dataset.teamheadApproval===selected.teamhead)&&(!selected.admin||row.dataset.adminApproval===selected.admin)&&(!selected.payment||row.dataset.paymentStatus===selected.payment);
+   const show=textMatch&&filterMatch; row.hidden=!show; if(show)visible++;
   });
-  dateBtn.addEventListener('click', () => { sortRows('date'); applyFilters(); });
-  amountBtn.addEventListener('click', () => { sortRows('amount'); applyFilters(); });
-  applyFilters();
+  if(noMatch)noMatch.hidden=visible!==0;
+  if(count)count.textContent=`${visible} of ${rows().length} reimbursement form(s)`;
+ }
+ function sortRows(mode){
+  const sorted=rows().sort((a,b)=>mode==='amount'?Number(b.dataset.amount||0)-Number(a.dataset.amount||0):(b.dataset.date||'').localeCompare(a.dataset.date||''));
+  sorted.forEach(row=>body.insertBefore(row,noMatch));
+  dateBtn.classList.toggle('active',mode==='date');amountBtn.classList.toggle('active',mode==='amount');
+  dateBtn.textContent=mode==='date'?'Date ↓':'Date';amountBtn.textContent=mode==='amount'?'Amount ↓':'Amount';
+ }
+ search.addEventListener('input',applyFilters);Object.values(filters).forEach(el=>el.addEventListener('change',applyFilters));
+ dateBtn.addEventListener('click',()=>{sortRows('date');applyFilters()});amountBtn.addEventListener('click',()=>{sortRows('amount');applyFilters()});
+ clear.addEventListener('click',()=>{search.value='';Object.values(filters).forEach(el=>el.value='');sortRows('date');applyFilters()});
+ sortRows('date');applyFilters();
 })();
 </script>
 {% endblock %}

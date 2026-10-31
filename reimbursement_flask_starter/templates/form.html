@@ -25,7 +25,7 @@
         <div class="expense-row-grid">
           <div class="expense-field"><label>Description</label><select name="Description[]" class="description" required>{% for d in descriptions %}<option value="{{ d }}" {% if r.Description==d %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></div>
           <div class="expense-field"><label>GCC Expense Code</label><input name="GCCExpCode[]" class="gcc-code" value="{{ gcc_codes.get(r.Description,'') }}" readonly></div>
-          <div class="expense-field"><label>Expense Date</label><input type="date" name="ExpenseDate[]" value="{{ r.ExpenseDate or '' }}"></div>
+          <div class="expense-field"><label>Expense Date</label><input type="date" name="ExpenseDate[]" value="{{ r.ExpenseDate|excel_date_input }}"></div>
           <div class="expense-field"><label>Bill No.</label><input name="BillNo[]" value="{{ r.BillNo or '' }}"></div>
           <div class="expense-field"><label>Bill Amount (INR)</label><input type="number" step="0.01" min="0" name="BillAmount[]" value="{{ r.BillAmount or 0 }}"></div>
           <div class="expense-field"><label>Claim Amount (INR)</label><input type="number" step="0.01" min="0" name="ClaimAmount[]" value="{{ r.ClaimAmount or 0 }}"></div>

@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from io import BytesIO
 
@@ -38,13 +38,13 @@ class ExpenseSundry(db.Model):
     __tablename__ = "ExpenseSundry"
     FormNo = db.Column(db.String(255), primary_key=True)
     Item = db.Column(db.Integer, primary_key=True)
-    FormDate = db.Column(db.String(30))
+    FormDate = db.Column(db.Float)
     EmpID = db.Column(db.String(255))
     EName = db.Column(db.String(255))
     Manager = db.Column(db.String(255))
     Description = db.Column(db.String(255))
     GCCExpCode = db.Column(db.String(255))
-    ExpenseDate = db.Column(db.String(30))
+    ExpenseDate = db.Column(db.Float)
     BillNo = db.Column(db.String(255))
     BillAmount = db.Column(db.Float, default=0)
     ClaimAmount = db.Column(db.Float, default=0)
@@ -54,6 +54,22 @@ class ExpenseSundry(db.Model):
     Status = db.Column(db.String(100), default="Submitted")
     DocumentID = db.Column(db.String(1000))
     AttachmentCheck = db.Column(db.String(50))
+    ManagerApproval = db.Column(db.String(50), nullable=True, default="Pending", server_default=db.text("'Pending'"))
+    HRApproval = db.Column(db.String(50), nullable=True, default="Pending", server_default=db.text("'Pending'"))
+    SignatoryApproval = db.Column(db.String(50), nullable=True, default="Pending", server_default=db.text("'Pending'"))
+    TeamHeadApproval = db.Column(db.String(50), nullable=True, default="Pending", server_default=db.text("'Pending'"))
+    AdminApproval = db.Column(db.String(50), nullable=True, default="Pending", server_default=db.text("'Pending'"))
+    ManagerApprovalBy = db.Column(db.String(255), nullable=True)
+    HRApprovalBy = db.Column(db.String(255), nullable=True)
+    SignatoryApprovalBy = db.Column(db.String(255), nullable=True)
+    TeamHeadApprovalBy = db.Column(db.String(255), nullable=True)
+    AdminApprovalBy = db.Column(db.String(255), nullable=True)
+    FormReviewComments = db.Column(db.String(1000), nullable=True)
+    ManagerApprovalDate = db.Column(db.Float, nullable=True)
+    HRApprovalDate = db.Column(db.Float, nullable=True)
+    SignatoryApprovalDate = db.Column(db.Float, nullable=True)
+    TeamHeadApprovalDate = db.Column(db.Float, nullable=True)
+    AdminApprovalDate = db.Column(db.Float, nullable=True)
 
     def __repr__(self):
         return f"<ExpenseSundry {self.FormNo} item={self.Item}>"
@@ -64,6 +80,60 @@ def money(value):
         return round(float(value or 0), 2)
     except (TypeError, ValueError):
         return 0.0
+
+
+EXCEL_EPOCH = datetime(1899, 12, 30)
+
+
+def date_to_excel_serial(value):
+    if value is None or str(value).strip() == "":
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text_value = str(value).strip()
+    try:
+        parsed = datetime.strptime(text_value[:10], "%Y-%m-%d")
+        return (parsed - EXCEL_EPOCH).total_seconds() / 86400
+    except ValueError:
+        try:
+            return float(text_value)
+        except ValueError:
+            raise ValueError(f"Invalid date value: {value}")
+
+
+def excel_serial_to_datetime(value):
+    if value is None or str(value).strip() == "":
+        return None
+    if isinstance(value, datetime):
+        return value
+    text_value = str(value).strip()
+    try:
+        return EXCEL_EPOCH + timedelta(days=float(text_value))
+    except (ValueError, TypeError, OverflowError):
+        try:
+            return datetime.strptime(text_value[:10], "%Y-%m-%d")
+        except ValueError:
+            return None
+
+
+def excel_serial_to_display(value):
+    parsed = excel_serial_to_datetime(value)
+    return parsed.strftime("%d-%b-%Y") if parsed else ""
+
+
+def excel_serial_to_input(value):
+    parsed = excel_serial_to_datetime(value)
+    return parsed.strftime("%Y-%m-%d") if parsed else ""
+
+
+@app.template_filter("excel_date")
+def excel_date_filter(value):
+    return excel_serial_to_display(value)
+
+
+@app.template_filter("excel_date_input")
+def excel_date_input_filter(value):
+    return excel_serial_to_input(value)
 
 
 def safe_remove(path, recursive=False):
@@ -125,7 +195,7 @@ def seed_dummy_data():
     """Add a couple of example forms only when the database is empty."""
     if ExpenseSundry.query.first():
         return
-    today = date.today().isoformat()
+    today = date_to_excel_serial(date.today().isoformat())
     demo = [
         ExpenseSundry(FormNo="SR-DEMO-1001", Item=1, FormDate=today, EmpID="A0566",
                       EName="Rutik Torambe", Manager="Shivam Khurana", Description="Travel",
@@ -140,15 +210,69 @@ def seed_dummy_data():
         ExpenseSundry(FormNo="SR-DEMO-1002", Item=1, FormDate=today, EmpID="A0566",
                       EName="Rutik Torambe", Manager="Shivam Khurana", Description="Office Supplies",
                       GCCExpCode="OFF-005", ExpenseDate=today, BillNo="BILL-205",
-                      BillAmount=9420, ClaimAmount=9420, Chargeable="NO",
+                      BillAmount=420, ClaimAmount=420, Chargeable="NO",
                       ClientName="Internal", Comments="Stationery", Status="Approved"),
     ]
     db.session.add_all(demo)
     db.session.commit()
 
 
+APPROVAL_COLUMNS = {
+    "ManagerApproval": "VARCHAR(50)",
+    "HRApproval": "VARCHAR(50)",
+    "SignatoryApproval": "VARCHAR(50)",
+    "TeamHeadApproval": "VARCHAR(50)",
+    "AdminApproval": "VARCHAR(50)",
+    "ManagerApprovalBy": "VARCHAR(255)",
+    "HRApprovalBy": "VARCHAR(255)",
+    "SignatoryApprovalBy": "VARCHAR(255)",
+    "TeamHeadApprovalBy": "VARCHAR(255)",
+    "AdminApprovalBy": "VARCHAR(255)",
+    "FormReviewComments": "VARCHAR(1000)",
+    "ManagerApprovalDate": "VARCHAR(30)",
+    "HRApprovalDate": "VARCHAR(30)",
+    "SignatoryApprovalDate": "VARCHAR(30)",
+    "TeamHeadApprovalDate": "VARCHAR(30)",
+    "AdminApprovalDate": "VARCHAR(30)",
+}
+
+
+def ensure_approval_schema():
+    """Add approval columns if this is an older database."""
+    inspector = db.inspect(db.engine)
+    if not inspector.has_table("ExpenseSundry"):
+        return
+    existing_columns = {column["name"].lower() for column in inspector.get_columns("ExpenseSundry")}
+    with db.engine.begin() as connection:
+        for column_name, sql_type in APPROVAL_COLUMNS.items():
+            if column_name.lower() not in existing_columns:
+                connection.exec_driver_sql(
+                    f'ALTER TABLE ExpenseSundry ADD {column_name} {sql_type} NULL'
+                )
+
+
+def initialize_approval_status(row):
+    """Fill missing statuses only; preserve existing approval decisions."""
+    for field in (
+        "ManagerApproval", "HRApproval", "SignatoryApproval",
+        "TeamHeadApproval", "AdminApproval"
+    ):
+        current_value = getattr(row, field, None)
+        if current_value is None or not str(current_value).strip():
+            setattr(row, field, "Pending")
+
+
+def normalize_existing_approval_statuses():
+    """Repair existing NULL/blank values without overwriting decisions."""
+    for row in ExpenseSundry.query.all():
+        initialize_approval_status(row)
+    db.session.commit()
+
+
 with app.app_context():
     db.create_all()
+    ensure_approval_schema()
+    normalize_existing_approval_statuses()
     seed_dummy_data()
 
 
@@ -264,7 +388,7 @@ def form_action(form_no, action):
             return redirect(url_for("form_action", form_no=form_no, action="edit"))
     first = rows[0]
     header = {"EName": first.EName or "", "EmpID": first.EmpID or "",
-              "Manager": first.Manager or "", "FormDate": first.FormDate or date.today().isoformat()}
+              "Manager": first.Manager or "", "FormDate": excel_serial_to_input(first.FormDate) or date.today().isoformat()}
     return page("Edit Form", "form.html", mode="edit", form_no=form_no, rows=rows,
                 header=header, today=date.today().isoformat(),
                 descriptions=descriptions(), clients=clients(), gcc_codes=GCC_DESCRIPTION_CODES)
@@ -309,12 +433,19 @@ def all_forms_summary():
     for row in ExpenseSundry.query.order_by(ExpenseSundry.FormDate.desc(), ExpenseSundry.FormNo, ExpenseSundry.Item).all():
         entry = grouped.setdefault(row.FormNo, {
             "form_no": row.FormNo, "name": row.EName, "emp_id": row.EmpID,
-            "form_date": row.FormDate, "status": row.Status, "count": 0, "total": 0.0
+            "form_date": excel_serial_to_input(row.FormDate), "form_date_display": excel_serial_to_display(row.FormDate), "status": row.Status, "count": 0, "total": 0.0,
+            "manager_approval": row.ManagerApproval or "Pending",
+            "hr_approval": row.HRApproval or "Pending",
+            "signatory_approval": row.SignatoryApproval or "Pending",
+            "teamhead_approval": row.TeamHeadApproval or "Pending",
+            "admin_approval": row.AdminApproval or "Pending",
         })
         entry["count"] += 1
         entry["total"] += row.ClaimAmount or 0
-        if row.FormDate and (not entry["form_date"] or row.FormDate > entry["form_date"]):
-            entry["form_date"] = row.FormDate
+        row_form_date = excel_serial_to_input(row.FormDate)
+        if row_form_date and (not entry["form_date"] or row_form_date > entry["form_date"]):
+            entry["form_date"] = row_form_date
+            entry["form_date_display"] = excel_serial_to_display(row.FormDate)
     return sorted(grouped.values(), key=lambda f: (f["form_date"] or "", f["form_no"]), reverse=True)
 
 
@@ -322,7 +453,7 @@ def save_submitted_form(form_no, is_new):
     emp_id = (request.form.get("EmpID") or "").strip()
     name = (request.form.get("EName") or "").strip()
     manager = (request.form.get("Manager") or "").strip()
-    form_date = (request.form.get("FormDate") or date.today().isoformat()).strip()
+    form_date = date_to_excel_serial((request.form.get("FormDate") or date.today().isoformat()).strip())
     descriptions_in = request.form.getlist("Description[]")
     if not name or not emp_id:
         raise ValueError("Employee name and Employee ID are required.")
@@ -358,7 +489,12 @@ def save_submitted_form(form_no, is_new):
             if row.Description not in GCC_DESCRIPTION_CODES:
                 raise ValueError(f"Unknown expense description: {row.Description}")
             row.GCCExpCode = GCC_DESCRIPTION_CODES[row.Description]
-            for field in ["ExpenseDate", "BillNo", "ClientName", "Comments"]:
+            row.ExpenseDate = date_to_excel_serial(
+                fields["ExpenseDate"][index].strip()
+                if index < len(fields["ExpenseDate"]) and fields["ExpenseDate"][index]
+                else None
+            )
+            for field in ["BillNo", "ClientName", "Comments"]:
                 values = fields[field]
                 setattr(row, field, values[index].strip() if index < len(values) and values[index] else "")
             row.BillAmount = money(fields["BillAmount"][index] if index < len(fields["BillAmount"]) else 0)
@@ -389,6 +525,7 @@ def save_submitted_form(form_no, is_new):
                 staged.append(pdf_path)
                 row.DocumentID = str(pdf_path.resolve())
                 row.AttachmentCheck = "Y"
+            initialize_approval_status(row)
             db.session.add(row)
 
         for old_item, old_row in existing.items():
