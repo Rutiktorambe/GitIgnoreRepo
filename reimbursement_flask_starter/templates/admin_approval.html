@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.admin-page{max-width:1500px;margin:auto;color:#243b49}.admin-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:8px 0 18px}.admin-kicker{font-size:10px;letter-spacing:.13em;font-weight:800;color:#c8102e;margin:0 0 5px}.admin-head h1{font-size:24px;margin:0}.admin-head p{font-size:12px;color:#71808a;margin:5px 0 0}.admin-head a{font-size:11px;text-decoration:none;border:1px solid #d9e0e4;padding:8px 11px;border-radius:7px;color:#344b59;background:white}.admin-filters{display:flex;align-items:end;gap:9px;flex-wrap:wrap;background:#fff;border:1px solid #e3e9ed;border-radius:10px;padding:12px;margin-bottom:13px}.admin-field{display:flex;flex-direction:column;gap:4px}.admin-field label{font-size:10px;font-weight:750;color:#5d707c}.admin-field input,.admin-field select{height:34px;min-width:130px;border:1px solid #d8e0e5;border-radius:6px;padding:0 9px;font-size:11px;background:#fff;color:#243b49}.admin-field.search input{min-width:220px}.admin-filter-btn{height:34px;padding:0 12px;border:1px solid #d8e0e5;border-radius:6px;background:#f7f9fa;color:#344b59;font-size:11px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}.admin-panel{background:white;border:1px solid #e3e9ed;border-radius:10px;padding:10px}.admin-table-wrap{overflow-x:auto}.admin-table{width:100%;border-collapse:collapse;min-width:1150px;font-size:11px}.admin-table th{background:#f3f6f7;text-align:left;color:#536773;font-size:10px;padding:10px 8px;white-space:nowrap}.admin-table td{padding:10px 8px;border-top:1px solid #edf0f2;vertical-align:middle}.admin-pill{display:inline-block;border-radius:20px;padding:4px 8px;font-size:10px;font-weight:800;background:#fff5e7;color:#96620d;white-space:nowrap}.admin-pill.approved{background:#edf6f2;color:#267354}.admin-pill.rejected{background:#fff0f0;color:#b42332}.admin-actions{display:flex;gap:6px;align-items:center}.admin-actions form{display:inline}.admin-btn{border:0;border-radius:6px;padding:7px 9px;font-size:10px;font-weight:750;cursor:pointer}.approve-btn{background:#e8f4ed;color:#216b45}.reject-btn{background:#fff0f0;color:#b42332}.admin-empty{text-align:center;padding:25px!important;color:#71808a}.admin-count{font-size:10px;color:#71808a;padding:10px 3px 1px}.reason-modal{display:none;position:fixed;inset:0;background:rgba(17,31,40,.48);z-index:1000;align-items:center;justify-content:center;padding:18px}.reason-modal.open{display:flex}.reason-box{width:min(480px,100%);background:#fff;border-radius:12px;padding:20px;box-shadow:0 18px 60px #0003}.reason-box h2{font-size:18px;margin:0 0 7px}.reason-box p{font-size:12px;color:#667985;margin:0 0 13px}.reason-box textarea{width:100%;min-height:110px;border:1px solid #d5dfe4;border-radius:7px;padding:10px;font:12px Arial,sans-serif;resize:vertical}.reason-error{display:none;color:#b42332;font-size:11px;margin-top:5px}.reason-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.reason-actions button{border:1px solid #d8e0e5;border-radius:6px;padding:8px 12px;background:#fff;font-size:11px;cursor:pointer}.reason-actions .confirm{background:#c8102e;color:white;border-color:#c8102e}@media(max-width:700px){.admin-head{align-items:flex-start;flex-direction:column}.admin-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.admin-field,.admin-field input,.admin-field select{min-width:0;width:100%}.admin-field.search{grid-column:1/-1}.admin-field.search input{min-width:0}}
+</style>
+<div class="admin-page">
+<header class="admin-head"><div><p class="admin-kicker">WORKFLOW CONTROL</p><h1>Admin Approval</h1><p>Review reimbursement forms and record the final administrative decision.</p></div><a href="{{ url_for('history') }}">Back to History</a></header>
+<form class="admin-filters" id="adminLiveFilters" method="get" action="{{ url_for('admin_approval') }}">
+<div class="admin-field search"><label for="adminSearch">Search</label><input id="adminSearch" name="q" value="{{ search_text }}" placeholder="Form number, employee name or ID"></div>
+{% for key,label in [('admin','Admin Approval'),('manager','Manager Approval'),('hr','HR Approval'),('teamhead','Team Head Approval'),('signatory','Signatory Approval')] %}
+<div class="admin-field"><label for="{{ key }}Filter">{{ label }}</label><select id="{{ key }}Filter" name="{{ key }}"><option value="">All</option>{% for option in approval_options %}<option value="{{ option }}" {% if selected[key]|lower == option|lower %}selected{% endif %}>{{ option }}</option>{% endfor %}</select></div>
+{% endfor %}
+<a class="admin-filter-btn" href="{{ url_for('admin_approval') }}">Clear</a>
+</form>
+<section class="admin-panel"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Form No.</th><th>Employee</th><th>Employee ID</th><th>Manager</th><th>Date</th><th>Entries</th><th>Claim Total (INR)</th><th>Manager</th><th>HR</th><th>Team Head</th><th>Signatory</th><th>Admin</th><th>Review Comments</th><th>Action</th></tr></thead><tbody>
+{% for f in forms %}
+<tr><td><strong>{{ f.form_no }}</strong></td><td>{{ f.name }}</td><td>{{ f.emp_id }}</td><td>{{ f.manager_name }}</td><td>{{ f.form_date or '—' }}</td><td>{{ f.count }}</td><td>₹{{ '%.2f'|format(f.total) }}</td>
+{% for key in ['manager','hr','teamhead','signatory','admin'] %}{% set v=f[key]|lower %}<td><span class="admin-pill {% if v=='approved' %}approved{% elif v=='rejected' %}rejected{% endif %}">{{ f[key] }}</span></td>{% endfor %}
+<td title="{{ f.comments }}">{{ f.comments[:55] if f.comments else '—' }}{% if f.comments|length > 55 %}…{% endif %}</td>
+<td><div class="admin-actions"><form method="post" action="{{ url_for('admin_approval') }}"><input type="hidden" name="form_no" value="{{ f.form_no }}"><input type="hidden" name="decision" value="Approved"><button class="admin-btn approve-btn" type="submit" {% if f.admin|lower=='approved' %}disabled{% endif %}>Approve</button></form><button class="admin-btn reject-btn" type="button" data-form="{{ f.form_no }}" onclick="openRejectModal(this)">Reject</button><a href="{{ url_for('form_action',form_no=f.form_no,action='view') }}" style="font-size:10px;color:#12618b">View</a></div></td></tr>
+{% else %}<tr><td colspan="14" class="admin-empty">No reimbursement forms match these filters.</td></tr>{% endfor %}
+</tbody></table></div><div class="admin-count">Showing {{ forms|length }} form(s)</div></section>
+</div>
+<div class="reason-modal" id="rejectModal" role="dialog" aria-modal="true" aria-labelledby="rejectTitle"><div class="reason-box"><h2 id="rejectTitle">Reject reimbursement form</h2><p id="rejectFormLabel">A rejection reason is mandatory and saved in FormReviewComments.</p>
+<form method="post" action="{{ url_for('admin_approval') }}" id="rejectForm"><input type="hidden" name="form_no" id="rejectFormNo"><input type="hidden" name="decision" value="Rejected"><label for="FormReviewComments" style="display:block;font-size:11px;font-weight:750;margin-bottom:6px">Rejection reason <span style="color:#c8102e">*</span></label><textarea id="FormReviewComments" name="FormReviewComments" maxlength="1000" required placeholder="Explain why this form is being rejected..."></textarea><div class="reason-error" id="reasonError">Please enter the rejection reason before continuing.</div><div class="reason-actions"><button type="button" onclick="closeRejectModal()">Cancel</button><button type="submit" class="confirm">Confirm Rejection</button></div></form></div></div>
+
+<script>
+(function () {
+    const form = document.getElementById('adminLiveFilters');
+    if (!form) return;
+
+    let searchTimer = null;
+    const searchInput = form.querySelector('input[name="q"]');
+
+    function applyLiveFilters() {
+        const params = new URLSearchParams(new FormData(form));
+        for (const [key, value] of [...params.entries()]) {
+            if (!value.trim()) params.delete(key);
+        }
+        const query = params.toString();
+        const nextUrl = form.action + (query ? '?' + query : '');
+        window.location.assign(nextUrl);
+    }
+
+    form.querySelectorAll('select').forEach(function (select) {
+        select.addEventListener('change', applyLiveFilters);
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(applyLiveFilters, 350);
+        });
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        applyLiveFilters();
+    });
+})();
+</script>
+
+<script>
+function openRejectModal(button){document.getElementById('rejectFormNo').value=button.dataset.form;document.getElementById('rejectFormLabel').textContent='Rejection reason for '+button.dataset.form+' is mandatory and will be saved in FormReviewComments.';document.getElementById('FormReviewComments').value='';document.getElementById('reasonError').style.display='none';document.getElementById('rejectModal').classList.add('open');document.getElementById('FormReviewComments').focus();}
+function closeRejectModal(){document.getElementById('rejectModal').classList.remove('open');}
+document.getElementById('rejectForm').addEventListener('submit',function(e){const t=document.getElementById('FormReviewComments');if(!t.value.trim()){e.preventDefault();document.getElementById('reasonError').style.display='block';t.focus();}});
+document.getElementById('rejectModal').addEventListener('click',function(e){if(e.target===this)closeRejectModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeRejectModal();});
+</script>
+{% endblock %}

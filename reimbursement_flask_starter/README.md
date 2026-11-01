@@ -51,3 +51,16 @@ New expense rows initialize Manager, HR, Signatory, Team Head and Admin
 approval statuses to Pending. During edits, existing nonblank approval
 decisions are preserved. Missing/blank approval values are normalized to
 Pending on startup.
+
+
+## Admin Approval page
+Open `/admin/approval` from the Admin Approval navigation link. Search supports
+form number, employee name and employee ID. Filters cover Admin, Manager, HR,
+Team Head and Signatory approval statuses.
+
+Approve updates AdminApproval, AdminApprovalBy and AdminApprovalDate for every
+expense row in the form. Reject requires a nonblank reason and stores it in
+FormReviewComments for every row, and sets the form Status to Rejected. The
+admin name defaults to `Admin`. Add your application's login/admin-role
+authorization before production use; this starter does not implement access
+control.

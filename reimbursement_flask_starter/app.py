@@ -394,6 +394,75 @@ def form_action(form_no, action):
                 descriptions=descriptions(), clients=clients(), gcc_codes=GCC_DESCRIPTION_CODES)
 
 
+
+
+@app.route("/admin/approval", methods=["GET", "POST"])
+def admin_approval():
+    if request.method == "POST":
+        form_no = (request.form.get("form_no") or "").strip()
+        decision = (request.form.get("decision") or "").strip().title()
+        comments = (request.form.get("FormReviewComments") or "").strip()
+        admin_name = (request.form.get("AdminApprovalBy") or "").strip() or "Admin"
+        if decision not in {"Approved", "Rejected"}:
+            flash("Choose Approve or Reject.", "error")
+            return redirect(url_for("admin_approval"))
+        if decision == "Rejected" and not comments:
+            flash("Rejection reason is mandatory.", "error")
+            return redirect(url_for("admin_approval"))
+        rows = all_rows(form_no)
+        if not rows:
+            abort(404)
+        approval_date = date_to_excel_serial(date.today().isoformat())
+        for row in rows:
+            row.AdminApproval = decision
+            row.AdminApprovalBy = admin_name
+            row.AdminApprovalDate = approval_date
+            if decision == "Rejected":
+                row.FormReviewComments = comments
+                row.Status = "Rejected"
+            else:
+                required = [row.ManagerApproval, row.HRApproval, row.SignatoryApproval,
+                            row.TeamHeadApproval, row.AdminApproval]
+                if all((v or "").strip().lower() in {"approved", "not required"} for v in required):
+                    row.Status = "Approved"
+                row.FormReviewComments = comments or row.FormReviewComments
+        db.session.commit()
+        flash(f"Form {form_no} {decision.lower()} successfully.", "success")
+        return redirect(url_for("admin_approval"))
+
+    search_text = (request.args.get("q") or "").strip().lower()
+    selected = {key: (request.args.get(key) or "").strip()
+                for key in ("admin", "manager", "hr", "teamhead", "signatory")}
+    grouped = {}
+    for row in ExpenseSundry.query.order_by(ExpenseSundry.FormDate.desc(), ExpenseSundry.Item.asc()).all():
+        item = grouped.setdefault(row.FormNo, {
+            "form_no": row.FormNo, "name": row.EName or "", "emp_id": row.EmpID or "",
+            "manager_name": row.Manager or "", "form_date": excel_serial_to_display(row.FormDate),
+            "total": 0.0, "count": 0, "admin": row.AdminApproval or "Pending",
+            "manager": row.ManagerApproval or "Pending", "hr": row.HRApproval or "Pending",
+            "teamhead": row.TeamHeadApproval or "Pending", "signatory": row.SignatoryApproval or "Pending",
+            "comments": row.FormReviewComments or ""
+        })
+        item["total"] += row.ClaimAmount or 0
+        item["count"] += 1
+
+    forms = []
+    for item in grouped.values():
+        text_match = not search_text or any(
+            search_text in str(item[k]).lower()
+            for k in ("form_no", "name", "emp_id", "manager_name")
+        )
+        filter_match = all(
+            not selected[k] or str(item[k]).lower() == selected[k].lower()
+            for k in selected
+        )
+        if text_match and filter_match:
+            forms.append(item)
+    forms.sort(key=lambda x: x["form_no"], reverse=True)
+    return page("Admin Approval", "admin_approval.html", forms=forms,
+                search_text=search_text, selected=selected,
+                approval_options=["Pending", "Approved", "Rejected", "Not Required"])
+
 @app.route("/reimbursement/<form_no>/attachment/<int:item>")
 def download_pdf(form_no, item):
     row = db.session.get(ExpenseSundry, (form_no, item))
