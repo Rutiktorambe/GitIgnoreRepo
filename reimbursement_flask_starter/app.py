@@ -1,6 +1,9 @@
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+import html
 import os
 import uuid
 from datetime import date, datetime, timedelta
+from xml.sax.saxutils import escape
 from pathlib import Path
 from io import BytesIO
 
@@ -8,6 +11,11 @@ from flask import Flask, abort, flash, redirect, render_template, request, send_
 from flask_sqlalchemy import SQLAlchemy
 from PIL import Image, ImageOps
 from pypdf import PdfWriter
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_ROOT = Path(os.environ.get("REIMBURSEMENT_UPLOAD_FOLDER", BASE_DIR / "reimbursement_files"))
@@ -42,6 +50,7 @@ class ExpenseSundry(db.Model):
     EmpID = db.Column(db.String(255))
     EName = db.Column(db.String(255))
     Manager = db.Column(db.String(255))
+    TeamName = db.Column(db.String(255), nullable=True)
     Description = db.Column(db.String(255))
     GCCExpCode = db.Column(db.String(255))
     ExpenseDate = db.Column(db.Float)
@@ -53,6 +62,7 @@ class ExpenseSundry(db.Model):
     Comments = db.Column(db.String(1000))
     Status = db.Column(db.String(100), default="Submitted")
     DocumentID = db.Column(db.String(1000))
+    FormPDFPath = db.Column(db.String(1000), nullable=True)
     AttachmentCheck = db.Column(db.String(50))
     ManagerApproval = db.Column(db.String(50), nullable=True, default="Pending", server_default=db.text("'Pending'"))
     HRApproval = db.Column(db.String(50), nullable=True, default="Pending", server_default=db.text("'Pending'"))
@@ -218,6 +228,7 @@ def seed_dummy_data():
 
 
 APPROVAL_COLUMNS = {
+    "TeamName": "VARCHAR(255)",
     "ManagerApproval": "VARCHAR(50)",
     "HRApproval": "VARCHAR(50)",
     "SignatoryApproval": "VARCHAR(50)",
@@ -238,13 +249,14 @@ APPROVAL_COLUMNS = {
 
 
 def ensure_approval_schema():
-    """Add approval columns if this is an older database."""
+    """Add approval and finance PDF columns if this is an older database."""
     inspector = db.inspect(db.engine)
     if not inspector.has_table("ExpenseSundry"):
         return
     existing_columns = {column["name"].lower() for column in inspector.get_columns("ExpenseSundry")}
+    schema_columns = {**APPROVAL_COLUMNS, "FormPDFPath": "VARCHAR(1000)"}
     with db.engine.begin() as connection:
-        for column_name, sql_type in APPROVAL_COLUMNS.items():
+        for column_name, sql_type in schema_columns.items():
             if column_name.lower() not in existing_columns:
                 connection.exec_driver_sql(
                     f'ALTER TABLE ExpenseSundry ADD {column_name} {sql_type} NULL'
@@ -388,7 +400,7 @@ def form_action(form_no, action):
             return redirect(url_for("form_action", form_no=form_no, action="edit"))
     first = rows[0]
     header = {"EName": first.EName or "", "EmpID": first.EmpID or "",
-              "Manager": first.Manager or "", "FormDate": excel_serial_to_input(first.FormDate) or date.today().isoformat()}
+              "Manager": first.Manager or "", "TeamName": getattr(first, "TeamName", "") or "", "FormDate": excel_serial_to_input(first.FormDate) or date.today().isoformat()}
     return page("Edit Form", "form.html", mode="edit", form_no=form_no, rows=rows,
                 header=header, today=date.today().isoformat(),
                 descriptions=descriptions(), clients=clients(), gcc_codes=GCC_DESCRIPTION_CODES)
@@ -463,6 +475,123 @@ def admin_approval():
                 search_text=search_text, selected=selected,
                 approval_options=["Pending", "Approved", "Rejected", "Not Required"])
 
+
+@app.route("/finance")
+def finance_dashboard():
+    """Finance team workspace for generating and downloading reimbursement PDFs."""
+    q = (request.args.get("q") or "").strip().lower()
+    forms = finance_forms_summary()
+    if q:
+        forms = [f for f in forms if q in f["form_no"].lower() or q in f["name"].lower() or q in f["emp_id"].lower()]
+    return page("Finance Dashboard", "finance_dashboard.html", forms=forms, search_text=q)
+
+
+@app.route("/finance/<form_no>/generate-pdf", methods=["POST"])
+def finance_generate_pdf(form_no):
+    rows = all_rows(form_no)
+    if not rows:
+        abort(404)
+    try:
+        path = generate_record_pdf(form_no, rows)
+        flash(f"PDF generated and saved for {form_no}.", "success")
+        return send_file(path, as_attachment=True, download_name=f"{form_no}_form.pdf")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Could not generate PDF: {exc}", "error")
+        return redirect(url_for("finance_dashboard"))
+
+
+
+@app.route("/finance/<form_no>/download-full", methods=["GET"])
+def finance_download_full(form_no):
+    """Build the form PDF plus every available item attachment into one download."""
+    rows = all_rows(form_no)
+    if not rows:
+        abort(404)
+
+    writer = None
+    try:
+        # Reuse the saved form PDF when present; otherwise generate and save it.
+        saved_path = rows[0].FormPDFPath
+        form_pdf = Path(saved_path).resolve() if saved_path else None
+        if not form_pdf or not form_pdf.is_file():
+            form_pdf = Path(generate_record_pdf(form_no, rows)).resolve()
+
+        # Confirm the generated form PDF is inside the configured upload directory.
+        upload_root = UPLOAD_ROOT.resolve()
+        try:
+            form_pdf.relative_to(upload_root)
+        except ValueError:
+            abort(403)
+
+        writer = PdfWriter()
+        writer.append(str(form_pdf))
+
+        # Each row's DocumentID points to the combined PDF for that expense item.
+        # Add each attachment once, preserving expense item order.
+        for row in rows:
+            if not row.DocumentID:
+                continue
+
+            attachment_path = Path(row.DocumentID).resolve()
+            try:
+                attachment_path.relative_to(upload_root)
+            except ValueError:
+                abort(403)
+
+            if not attachment_path.is_file():
+                app.logger.warning(
+                    "Attachment missing for form %s, item %s: %s",
+                    form_no, row.Item, attachment_path
+                )
+                continue
+
+            if attachment_path.suffix.lower() != ".pdf":
+                app.logger.warning(
+                    "Skipping non-PDF attachment for form %s, item %s: %s",
+                    form_no, row.Item, attachment_path
+                )
+                continue
+
+            writer.append(str(attachment_path))
+
+        # Return an in-memory PDF response; avoids stale/locked output files
+        # and ensures Flask streams a fresh application/pdf attachment.
+        pdf_buffer = BytesIO()
+        writer.write(pdf_buffer)
+        writer.close()
+        writer = None
+        pdf_buffer.seek(0)
+
+        safe_form_no = re.sub(r"[^A-Za-z0-9_-]+", "_", str(form_no)).strip("_") or "Reimbursement"
+        response = send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{safe_form_no}_full.pdf",
+            max_age=0
+        )
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    except Exception:
+        if writer is not None:
+            try:
+                writer.close()
+            except Exception:
+                pass
+        db.session.rollback()
+        app.logger.exception("Could not create full reimbursement PDF for %s", form_no)
+        return (
+            "Could not create the full reimbursement PDF. "
+            "Check the Flask server log for the detailed error.",
+            500,
+            {"Content-Type": "text/plain; charset=utf-8"}
+        )
+
+
 @app.route("/reimbursement/<form_no>/attachment/<int:item>")
 def download_pdf(form_no, item):
     row = db.session.get(ExpenseSundry, (form_no, item))
@@ -478,6 +607,350 @@ def download_pdf(form_no, item):
     if not path.is_file():
         abort(404)
     return send_file(path, as_attachment=True, download_name=f"{form_no}_{item}.pdf")
+
+
+
+def finance_forms_summary():
+    grouped = {}
+    for row in ExpenseSundry.query.order_by(ExpenseSundry.FormDate.desc(), ExpenseSundry.Item.asc()).all():
+        item = grouped.setdefault(row.FormNo, {
+            "form_no": row.FormNo, "name": row.EName or "", "emp_id": row.EmpID or "",
+            "form_date": excel_serial_to_display(row.FormDate), "status": row.Status or "Submitted",
+            "count": 0, "total": 0.0, "pdf_saved": bool(row.FormPDFPath and Path(row.FormPDFPath).is_file())
+        })
+        item["count"] += 1
+        item["total"] += row.ClaimAmount or 0
+        item["pdf_saved"] = item["pdf_saved"] or bool(row.FormPDFPath and Path(row.FormPDFPath).is_file())
+    return sorted(grouped.values(), key=lambda x: x["form_no"], reverse=True)
+
+
+
+
+
+
+def generate_record_pdf(form_no, rows):
+    """Generate a two-section reimbursement PDF: summary/approvals, then expense entries."""
+    if not rows:
+        raise ValueError(f"No reimbursement rows found for {form_no}")
+
+    form_folder = UPLOAD_ROOT / form_no
+    form_folder.mkdir(parents=True, exist_ok=True)
+    output_path = (form_folder / f"{form_no}_form.pdf").resolve()
+
+    generated_at = datetime.now().astimezone()
+    forwarded_ip = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded_ip.split(",")[0].strip() if forwarded_ip else (request.remote_addr or "Unknown")
+
+    PURPLE = colors.HexColor("#35245e")
+    LIGHT_PURPLE = colors.HexColor("#f0edf8")
+    GRID = colors.HexColor("#d8d4e3")
+    MUTED = colors.HexColor("#687386")
+    PALE = colors.HexColor("#f7f6fa")
+    WHITE = colors.white
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name="RTitle", parent=styles["Title"], fontName="Helvetica-Bold",
+        fontSize=18, leading=22, textColor=PURPLE, alignment=TA_LEFT, spaceAfter=2
+    ))
+    styles.add(ParagraphStyle(
+        name="RSection", parent=styles["Heading2"], fontName="Helvetica-Bold",
+        fontSize=11, leading=14, textColor=PURPLE, spaceBefore=7, spaceAfter=5
+    ))
+    styles.add(ParagraphStyle(
+        name="RLabel", parent=styles["BodyText"], fontName="Helvetica",
+        fontSize=7, leading=8.5, textColor=MUTED
+    ))
+    styles.add(ParagraphStyle(
+        name="RValue", parent=styles["BodyText"], fontName="Helvetica-Bold",
+        fontSize=8.5, leading=10.5, textColor=colors.HexColor("#172033")
+    ))
+    styles.add(ParagraphStyle(
+        name="RCell", parent=styles["BodyText"], fontName="Helvetica",
+        fontSize=6.5, leading=8, textColor=colors.HexColor("#172033")
+    ))
+    styles.add(ParagraphStyle(
+        name="RHead", parent=styles["BodyText"], fontName="Helvetica-Bold",
+        fontSize=6.5, leading=8, textColor=WHITE
+    ))
+    styles.add(ParagraphStyle(
+        name="RTotal", parent=styles["BodyText"], fontName="Helvetica-Bold",
+        fontSize=13, leading=16, textColor=PURPLE, alignment=TA_RIGHT
+    ))
+
+    def fmt(value):
+        if value is None or str(value).strip() == "":
+            return "—"
+        if isinstance(value, (date, datetime)):
+            return value.strftime("%d-%b-%Y")
+        return str(value)
+
+    def display_date(value):
+        if value is None or str(value).strip() == "":
+            return "—"
+        try:
+            converted = excel_serial_to_display(value)
+            return converted or fmt(value)
+        except Exception:
+            return fmt(value)
+
+    def p(value, style="RCell"):
+        return Paragraph(html.escape(fmt(value)).replace("\n", "<br/>"), styles[style])
+
+    first = rows[0]
+    story = []
+
+    # Branded document header.
+    logo_path = BASE_DIR / "static" / "images" / "intact_logo.png"
+    if logo_path.exists():
+        logo = RLImage(str(logo_path), width=31 * mm, height=17 * mm, kind="proportional")
+    else:
+        logo = Paragraph("<b><font color='#C8102E'>[ intact ]</font></b>", styles["RTitle"])
+
+    header = Table([[
+        logo,
+        [
+            Paragraph("SUNDRY REIMBURSEMENT", styles["RLabel"]),
+            Paragraph(html.escape(str(form_no)), styles["RTitle"]),
+            Paragraph("Employee claim record", styles["RLabel"])
+        ]
+    ]], colWidths=[42 * mm, 226 * mm])
+    header.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LINEBELOW", (0, 0), (-1, -1), 1.4, PURPLE),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.extend([header, Spacer(1, 3 * mm)])
+
+    # SECTION 1 — employee information, approval audit and total.
+    story.append(Paragraph("01 · Employee & approval summary", styles["RSection"]))
+
+    employee_fields = [
+        ("EMPLOYEE NAME", first.EName),
+        ("EMPLOYEE ID", first.EmpID),
+        ("LINE MANAGER", first.Manager),
+        ("TEAM NAME", getattr(first, "TeamName", None)),
+        ("FORM DATE", display_date(first.FormDate)),
+    ]
+    employee_cells = []
+    for label, value in employee_fields:
+        employee_cells.append([
+            Paragraph(html.escape(label), styles["RLabel"]),
+            Paragraph(html.escape(fmt(value)), styles["RValue"])
+        ])
+
+    employee_table = Table(
+        [[*employee_cells]],
+        colWidths=[53.6 * mm] * 5
+    )
+    employee_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), PALE),
+        ("BOX", (0, 0), (-1, -1), 0.5, GRID),
+        ("INNERGRID", (0, 0), (-1, -1), 0.4, GRID),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    story.extend([employee_table, Spacer(1, 2 * mm)])
+
+    approval_stages = [
+        ("Manager", "ManagerApproval", "ManagerApprovalBy", "ManagerApprovalDate"),
+        ("HR", "HRApproval", "HRApprovalBy", "HRApprovalDate"),
+        ("Signatory", "SignatoryApproval", "SignatoryApprovalBy", "SignatoryApprovalDate"),
+        ("Team Head", "TeamHeadApproval", "TeamHeadApprovalBy", "TeamHeadApprovalDate"),
+        ("Admin", "AdminApproval", "AdminApprovalBy", "AdminApprovalDate"),
+    ]
+
+
+    # Five compact approval cards. Each card shows status prominently,
+    # with approver and approval date in smaller supporting text.
+    approval_cards = []
+    for label, status_field, by_field, date_field in approval_stages:
+        status = getattr(first, status_field, None) or "Pending"
+        approver = getattr(first, by_field, None) or "—"
+        approved_on = display_date(getattr(first, date_field, None))
+
+        status_color = (
+            colors.HexColor("#18794e")
+            if str(status).strip().lower() == "approved"
+            else colors.HexColor("#b54708")
+            if str(status).strip().lower() == "pending"
+            else colors.HexColor("#b42318")
+            if str(status).strip().lower() == "rejected"
+            else PURPLE
+        )
+
+        card_content = [
+            Paragraph(html.escape(label.upper()), styles["RLabel"]),
+            Paragraph(
+                f'<font color="{status_color.hexval()}"><b>{html.escape(str(status))}</b></font>',
+                styles["RValue"]
+            ),
+            Paragraph(f"By: {html.escape(fmt(approver))}", styles["RLabel"]),
+            Paragraph(f"On: {html.escape(fmt(approved_on))}", styles["RLabel"]),
+        ]
+        approval_cards.append(card_content)
+
+    cards_table = Table(
+        [approval_cards],
+        colWidths=[53.6 * mm] * 5
+    )
+    cards_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), PALE),
+        ("BOX", (0, 0), (-1, -1), 0.5, GRID),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, GRID),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    story.extend([cards_table, Spacer(1, 2 * mm)])
+
+    total_bill = sum(money(r.BillAmount) for r in rows)
+    total_claim = sum(money(r.ClaimAmount) for r in rows)
+    total_table = Table([[
+        Paragraph("TOTAL CLAIM AMOUNT", styles["RLabel"]),
+        Paragraph(f"{total_claim:,.2f}", styles["RTotal"])
+    ]], colWidths=[190 * mm, 78 * mm])
+    total_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT_PURPLE),
+        ("BOX", (0, 0), (-1, -1), 0.7, GRID),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    story.extend([total_table, Spacer(1, 4 * mm)])
+
+    # SECTION 2 — all expense-level fields in ONE table.
+    story.append(Paragraph("02 · Expense entries", styles["RSection"]))
+
+    entry_headers = [
+        "ITEM", "EXPENSE TYPE", "GCC CODE", "EXPENSE DATE",
+        "BILL NO.", "BILL AMOUNT", "CLAIM AMOUNT",
+        "CHARGEABLE", "CLIENT", "COMMENTS"
+    ]
+    entry_data = [[p(h, "RHead") for h in entry_headers]]
+
+    for row in rows:
+        entry_data.append([
+            p(row.Item),
+            p(row.Description),
+            p(row.GCCExpCode),
+            p(display_date(row.ExpenseDate)),
+            p(row.BillNo),
+            p(f"{money(row.BillAmount):,.2f}"),
+            p(f"{money(row.ClaimAmount):,.2f}"),
+            p(row.Chargeable),
+            p(row.ClientName),
+            p(row.Comments)
+        ])
+
+    entry_widths = [
+        10 * mm, 34 * mm, 22 * mm, 27 * mm, 25 * mm,
+        27 * mm, 27 * mm, 21 * mm, 35 * mm, 40 * mm
+    ]
+    entry_table = Table(entry_data, colWidths=entry_widths, repeatRows=1)
+    entry_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), PURPLE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, PALE]),
+        ("GRID", (0, 0), (-1, -1), 0.4, GRID),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (5, 1), (6, -1), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+
+    story.append(entry_table)
+
+    # Compact attachment register: one row per expense item.
+    story.append(Paragraph("Attachment register", styles["RSection"]))
+    attachment_data = [[
+        p("ITEM NO.", "RHead"),
+        p("ATTACHMENT PATH", "RHead")
+    ]]
+    for row in rows:
+        attachment_path = getattr(row, "DocumentID", None)
+        attachment_data.append([
+            p(row.Item),
+            p(attachment_path if attachment_path else "No attachment")
+        ])
+
+    attachment_table = Table(
+        attachment_data,
+        colWidths=[25 * mm, 243 * mm],
+        repeatRows=1
+    )
+    attachment_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), PURPLE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, PALE]),
+        ("GRID", (0, 0), (-1, -1), 0.35, GRID),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    story.append(attachment_table)
+
+    # Security / document integrity notice.
+    story.extend([
+        Spacer(1, 3 * mm),
+        Paragraph(
+            "<b>SECURITY NOTICE</b><br/>"
+            "This document is generated by the computer. Any modification is prohibited "
+            "and firmly unauthorized modification is prohibited. In case of any issues "
+            "for the PDF, please contact with finance team.",
+            ParagraphStyle(
+                "SecurityNotice",
+                parent=styles["RLabel"],
+                fontName="Helvetica",
+                fontSize=7,
+                leading=9,
+                textColor=MUTED
+            )
+        )
+    ])
+
+    # Footer on every page.
+    def add_page_footer(canvas, doc):
+        canvas.saveState()
+        page_width, _ = landscape(A4)
+        canvas.setStrokeColor(GRID)
+        canvas.setLineWidth(0.5)
+        canvas.line(14 * mm, 12 * mm, page_width - 14 * mm, 12 * mm)
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(MUTED)
+        timestamp = generated_at.strftime("%d-%b-%Y %I:%M:%S %p %Z")
+        canvas.drawString(14 * mm, 7 * mm, f"Generated: {timestamp} | IP: {client_ip}")
+        canvas.drawRightString(page_width - 14 * mm, 7 * mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=landscape(A4),
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=10 * mm,
+        bottomMargin=16 * mm,
+        title=f"Sundry Reimbursement - {form_no}",
+        author="Finance"
+    )
+    doc.build(story, onFirstPage=add_page_footer, onLaterPages=add_page_footer)
+
+    for row in rows:
+        row.FormPDFPath = str(output_path)
+    db.session.commit()
+    return output_path
 
 
 def descriptions():
@@ -554,6 +1027,7 @@ def save_submitted_form(form_no, is_new):
             row = existing.get(old_item) or existing.get(item) or ExpenseSundry(FormNo=form_no, Item=item)
             row.FormNo, row.Item = form_no, item
             row.FormDate, row.EmpID, row.EName, row.Manager = form_date, emp_id, name, manager
+            row.TeamName = (request.form.get("TeamName") or "").strip() or getattr(row, "TeamName", None)
             row.Description = (desc or "").strip()
             if row.Description not in GCC_DESCRIPTION_CODES:
                 raise ValueError(f"Unknown expense description: {row.Description}")

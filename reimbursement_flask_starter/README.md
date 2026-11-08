@@ -64,3 +64,19 @@ FormReviewComments for every row, and sets the form Status to Rejected. The
 admin name defaults to `Admin`. Add your application's login/admin-role
 authorization before production use; this starter does not implement access
 control.
+
+
+## Finance Dashboard and PDF exports
+Open `/finance` to search reimbursement forms and use two actions:
+- **Generate PDF & Save** creates a finance summary PDF for the selected form, saves it under `reimbursement_files/<FormNo>/`, records its path in `ExpenseSundry.FormPDFPath`, and downloads that PDF.
+- **Download Full Form** combines the generated form PDF with every available per-item attachment PDF in item order into one PDF. If the record PDF has not yet been generated, it is generated and saved automatically first.
+
+Existing databases are updated at startup with the nullable `FormPDFPath` column. Install the updated dependencies with `pip install -r requirements.txt`. Add finance-role authorization to `/finance` and its export routes before production use; this starter does not implement authentication/role checks.
+
+
+### Modern branded finance PDF
+The finance-generated reimbursement PDF uses the Intact logo, a modern landscape layout, and a footer showing the generation timestamp and client IP address. The IP is taken from the incoming request; configure trusted proxy handling before relying on forwarded IP headers in production.
+
+
+### PDF layout refresh
+The finance PDF is now structured as a branded finance document: Intact logo and form reference header, employee summary cards, a focused expense table, separate totals panel, comments/business-purpose section, approval trail, and a running footer with generation timestamp, client IP, and page number. It is generated with ReportLab in landscape A4.
