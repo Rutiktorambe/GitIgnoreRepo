@@ -33,7 +33,7 @@
           <div class="expense-field"><label>Chargeable</label><select name="Chargeable[]"><option value="NO" {% if (r.Chargeable or 'NO')=='NO' %}selected{% endif %}>No</option><option value="YES" {% if r.Chargeable=='YES' %}selected{% endif %}>Yes</option></select></div>
           <div class="expense-field"><label>Client Name</label><select name="ClientName[]">{% for c in clients %}<option value="{{ c }}" {% if r.ClientName==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
           <div class="expense-field wide"><label>Comments</label><input name="Comments[]" value="{{ r.Comments or '' }}"></div>
-          <div class="expense-field wide"><label>Attachments (PDF, JPG, PNG)</label><input type="file" name="attachments_{{ loop.index0 }}" accept=".pdf,.jpg,.jpeg,.png" multiple><span class="form-note">Select PDFs and images together. They will be merged into one PDF for this expense.</span></div>
+          <div class="expense-field wide"><label>Attachments (PDF, JPG, PNG)</label><input type="file" name="attachments_{{ loop.index0 }}" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple><span class="form-note">Select multiple files in one go — PDFs, PNGs and JPGs can be mixed for the same expense. All selected files are combined into one PDF.</span><small class="attachment-selection" aria-live="polite"></small></div>
         </div>
       </article>
       {% endfor %}
@@ -59,7 +59,15 @@
      row.querySelector('input[name="Item[]"]').value = i+1;
    });
  }
- list.addEventListener('change', e => { if(e.target.matches('.description')) updateRow(e.target.closest('.expense-row')); });
+ list.addEventListener('change', e => {
+   if(e.target.matches('.description')) updateRow(e.target.closest('.expense-row'));
+   if(e.target.matches('input[type=file]')) {
+     const note = e.target.parentElement.querySelector('.attachment-selection');
+     if(note) note.textContent = e.target.files.length
+       ? `${e.target.files.length} file(s) selected: ${[...e.target.files].map(f => f.name).join(', ')}`
+       : '';
+   }
+ });
  list.addEventListener('click', e => {
    if(e.target.matches('.remove-expense')) {
      const rows=list.querySelectorAll('.expense-row');
