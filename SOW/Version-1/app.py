@@ -639,6 +639,51 @@ def download_project_pdf(project_id):
                                download_name=pdf_filename)
 
 
+@app.route("/admin/pdf/genrate/<projectCode>", methods=["GET"])
+def admin_generate_pdf(projectCode):
+    """
+    Generate a fresh PDF from the database record matching projectCode.
+    Prefer the active SOW version; if none is marked active, use the latest record.
+    """
+    normalized_code = (projectCode or "").strip()
+    if not normalized_code:
+        return {"error": "Project code is required."}, 400
+
+    project = (
+        SowProject.query
+        .filter(db.func.lower(SowProject.project_code) == normalized_code.lower(),
+                SowProject.active_flag == "Y")
+        .order_by(SowProject.id.desc())
+        .first()
+    )
+
+    if project is None:
+        project = (
+            SowProject.query
+            .filter(db.func.lower(SowProject.project_code) == normalized_code.lower())
+            .order_by(SowProject.id.desc())
+            .first()
+        )
+
+    if project is None:
+        return {"error": f"No SOW record found for project code '{normalized_code}'."}, 404
+
+    try:
+        # Uses the same ReportLab generator, branding, page layout and styling
+        # as the application's saved SOW PDF workflow.
+        pdf_filename = generate_project_pdf(project)
+        return send_from_directory(
+            os.path.join(app.instance_path, "generated_pdfs"),
+            pdf_filename,
+            as_attachment=True,
+            download_name=pdf_filename,
+            mimetype="application/pdf"
+        )
+    except Exception as exc:
+        app.logger.exception("Admin PDF generation failed for project code %s", normalized_code)
+        return {"error": "PDF generation failed.", "details": str(exc)}, 500
+
+
 @app.route("/health")
 def health():
     return {"status": "ok"}

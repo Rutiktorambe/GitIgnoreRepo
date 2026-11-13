@@ -102,3 +102,11 @@ On Linux servers, if Chromium reports missing system libraries, install the OS d
 
 ### PDF generation
 Saved SOW PDFs are generated with ReportLab. Install dependencies with `pip install -r requirements.txt`. The SOW badge and Intact logo are stored in `static/sow_logo.png` and `static/intact_logo.png` and are displayed in both the preview page and generated PDF.
+
+### Admin PDF generation endpoint
+
+Use `GET /admin/pdf/genrate/<projectCode>` to generate and download a fresh PDF using the SOW data stored in the database. The route selects the active (`active_flag = 'Y'`) version for the project code; if no active version exists, it selects the latest record. It calls the same ReportLab PDF generator used by the standard PDF workflow.
+
+Example: `/admin/pdf/genrate/PRJ001`
+
+**Access control:** This route is not protected by an admin login or role check in this starter project. Add authentication and authorization before exposing it in production.
