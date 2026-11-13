@@ -90,15 +90,7 @@ The EMP ID is required for every resource row so resource changes can be tracked
 
 ### PDF rendering (same layout as preview)
 
-Saved SOW PDFs are rendered from the same `templates/print.html` and `static/style.css` used by the preview page. Install dependencies and Chromium once on the server:
-
-```bash
-pip install -r requirements.txt
-playwright install chromium
-```
-
-On Linux servers, if Chromium reports missing system libraries, install the OS dependencies required by Playwright Chromium (for supported Linux distributions, `playwright install-deps chromium`).
-
+Saved SOW PDFs are generated with ReportLab only. No Chromium, browser binary, or Playwright installation is required. Install dependencies with `pip install -r requirements.txt`.
 
 ### PDF generation
 Saved SOW PDFs are generated with ReportLab. Install dependencies with `pip install -r requirements.txt`. The SOW badge and Intact logo are stored in `static/sow_logo.png` and `static/intact_logo.png` and are displayed in both the preview page and generated PDF.
@@ -110,3 +102,7 @@ Use `GET /admin/pdf/genrate/<projectCode>` to generate and download a fresh PDF 
 Example: `/admin/pdf/genrate/PRJ001`
 
 **Access control:** This route is not protected by an admin login or role check in this starter project. Add authentication and authorization before exposing it in production.
+
+
+### PDF generation (ReportLab only)
+The preview page and generated PDF use the same SOW sections, field order, project data, and SOW/Intact logos. ReportLab reproduces the visual structure in a native PDF layout; browser-only CSS effects may not render identically. No Chromium installation is required.
