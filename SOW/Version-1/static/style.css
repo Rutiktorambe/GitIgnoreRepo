@@ -101,3 +101,11 @@ details.collapsible>summary .collapse-indicator{color:#e31837}
 .native-rich-editable h2{font-size:1.2em;margin:8px 0}
 .native-rich-editable blockquote{border-left:3px solid var(--red,#c8102e);margin:8px 0;padding-left:12px;color:#555}
 .native-rich-editable ul,.native-rich-editable ol{padding-left:24px}
+
+/* SOW and Intact brand marks shared by preview and PDF */
+.doc-brand{display:flex;align-items:center;gap:16px;flex-shrink:0}
+.doc-brand img{display:block;object-fit:contain}
+.doc-brand .sow-logo{width:112px;height:92px}
+.doc-brand .intact-logo{width:82px;height:76px}
+@media(max-width:520px){.doc-brand{gap:8px}.doc-brand .sow-logo{width:76px;height:65px}.doc-brand .intact-logo{width:58px;height:54px}}
+@media print{.doc-brand .sow-logo{width:92px;height:76px}.doc-brand .intact-logo{width:68px;height:62px}}

@@ -86,3 +86,19 @@ Add authentication/authorization, CSRF protection, database migrations, stronger
 - The schema initializer adds the new columns to an existing database. Back up an existing database before first startup after this update.
 
 The EMP ID is required for every resource row so resource changes can be tracked consistently by employee identifier.
+
+
+### PDF rendering (same layout as preview)
+
+Saved SOW PDFs are rendered from the same `templates/print.html` and `static/style.css` used by the preview page. Install dependencies and Chromium once on the server:
+
+```bash
+pip install -r requirements.txt
+playwright install chromium
+```
+
+On Linux servers, if Chromium reports missing system libraries, install the OS dependencies required by Playwright Chromium (for supported Linux distributions, `playwright install-deps chromium`).
+
+
+### PDF generation
+Saved SOW PDFs are generated with ReportLab. Install dependencies with `pip install -r requirements.txt`. The SOW badge and Intact logo are stored in `static/sow_logo.png` and `static/intact_logo.png` and are displayed in both the preview page and generated PDF.

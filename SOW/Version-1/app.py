@@ -353,141 +353,51 @@ def _preview_object(draft):
 # PDF OPERATION: BUILD THE SOW PDF
 # ============================================================
 def generate_project_pdf(project):
-    """Generate a PDF on the server and return its filename."""
+    """Render the same print.html document used by the preview page to PDF.
+
+    This keeps the saved/downloaded PDF visually aligned with the browser preview,
+    including the shared CSS, tables, rich text, spacing and page-break rules.
+    Requires Playwright Chromium (install with: playwright install chromium).
+    """
+    from playwright.sync_api import sync_playwright
+
     output_dir = os.path.join(app.instance_path, "generated_pdfs")
     os.makedirs(output_dir, exist_ok=True)
     safe_code = re.sub(r"[^A-Za-z0-9_-]+", "_", project.project_code or "SOW")
     filename = f"{safe_code}_{project.id}.pdf"
     output_path = os.path.join(output_dir, filename)
 
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="SowTitle", parent=styles["Title"], fontName="Helvetica-Bold",
-                              fontSize=19, leading=23, textColor=colors.HexColor("#35245e"), alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name="SowSection", parent=styles["Heading2"], fontSize=12, leading=15,
-                              textColor=colors.HexColor("#35245e"), spaceBefore=10, spaceAfter=6))
-    styles.add(ParagraphStyle(name="SowBody", parent=styles["BodyText"], fontSize=8.5, leading=11, spaceAfter=4))
-    styles.add(ParagraphStyle(name="SowSmall", parent=styles["BodyText"], fontSize=7, leading=9))
-    story = [
-        Paragraph("STATEMENT OF WORK", styles["SowSmall"]),
-        Paragraph(html.escape(project.project_name or "Untitled SOW"), styles["SowTitle"]),
-        Paragraph(f"Project code: {html.escape(str(project.project_code or '—'))} &nbsp; | &nbsp; Region: {html.escape(str(project.region or '—'))}", styles["SowBody"]),
-        Spacer(1, 4*mm),
-    ]
+    # Reuse the exact document markup from the preview/print page. Inline the
+    # existing stylesheet so Chromium does not need to make a separate request.
+    html_document = render_template(
+        "print.html", project=project, preview_mode=False, pdf_exists=False
+    )
+    css_path = os.path.join(app.static_folder, "style.css")
+    with open(css_path, "r", encoding="utf-8") as css_file:
+        css = css_file.read()
+    html_document = re.sub(
+        r'<link\s+rel=["\']stylesheet["\']\s+href=["\'][^"\']*style\.css[^"\']*["\']\s*/?>',
+        "<style>\n" + css + "\n</style>",
+        html_document,
+        count=1,
+        flags=re.IGNORECASE,
+    )
 
-    def fmt(value):
-        if value is None or str(value).strip() == "":
-            return "—"
-        if isinstance(value, (date, datetime)):
-            return value.strftime("%d-%b-%Y")
-        return str(value)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.set_content(html_document, wait_until="networkidle")
+        page.emulate_media(media="print")
+        page.pdf(
+            path=output_path,
+            format="A4",
+            landscape=True,
+            print_background=True,
+            prefer_css_page_size=True,
+            margin={"top": "12mm", "right": "12mm", "bottom": "12mm", "left": "12mm"},
+        )
+        browser.close()
 
-    def add_section(title, rows):
-        story.append(Paragraph(html.escape(title), styles["SowSection"]))
-        table = Table([[Paragraph(f"<b>{html.escape(str(k))}</b>", styles["SowSmall"]),
-                        Paragraph(html.escape(fmt(v)), styles["SowSmall"])] for k, v in rows],
-                      colWidths=[48*mm, 220*mm], repeatRows=0)
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#f0edf8")),
-            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
-            ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("LEFTPADDING", (0,0), (-1,-1), 5), ("RIGHTPADDING", (0,0), (-1,-1), 5),
-            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ]))
-        story.append(table)
-        story.append(Spacer(1, 2*mm))
-
-    def add_rich_section(title, value):
-        if not value:
-            return
-        story.append(Paragraph(html.escape(title), styles["SowSection"]))
-        # ReportLab Paragraph supports a safe subset of HTML; sanitize and convert common tags.
-        content = value.replace("<p", "<para").replace("</p>", "</para>")
-        content = re.sub(r'<(h[23])[^>]*>', '<b>', content, flags=re.I)
-        content = re.sub(r'</h[23]>', '</b><br/>', content, flags=re.I)
-        content = re.sub(r'<span[^>]*>', '', content, flags=re.I).replace("</span>", "")
-        content = content.replace("<div>", "").replace("</div>", "<br/>")
-        content = content.replace("<blockquote>", "<i>").replace("</blockquote>", "</i><br/>")
-        content = re.sub(r"""<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)</a>""", r'<link href="\1" color="blue">\2</link>', content, flags=re.I)
-        # Keep only tags ReportLab can parse, stripping style attributes and Quill classes.
-        content = re.sub(r'<(p|para|strong|b|em|i|u|ol|ul|li|br)(?:\s+[^>]*)?>', lambda m: "<" + m.group(1).lower() + ">", content, flags=re.I)
-        content = re.sub(r'<(?!/?(?:para|strong|b|em|i|u|ol|ul|li|br|link)\b)[^>]+>', '', content, flags=re.I)
-        content = content.replace("&nbsp;", " ").replace("&#39;", "'")
-        if not content.strip():
-            return
-        try:
-            story.append(Paragraph(content, styles["SowBody"]))
-        except Exception:
-            plain = re.sub(r"<[^>]+>", " ", content)
-            story.append(Paragraph(html.escape(plain), styles["SowBody"]))
-
-    add_section("01 · Project details", [
-        ("Project code", project.project_code), ("Project name", project.project_name),
-        ("Project team", project.project_team), ("Project type", project.project_type),
-        ("Start date", project.start_date), ("End date", project.end_date),
-        ("No. of FTEs", project.fte_count), ("Region", project.region),
-        ("Client name", project.client_name), ("Business lead", project.business_lead),
-        ("Lead designation", project.business_lead_designation), ("Lead email", project.business_lead_email),
-        ("Billing model", project.billing_model), ("Change effective date", project.change_effective_date),
-        ("SOW version", getattr(project, "sow_version", "1.0")),
-    ])
-    add_rich_section("Change summary", getattr(project, "change_summary", ""))
-    add_section("02 · Cost & billing", [
-        ("Project cost (INR)", project.project_cost_inr), ("Billing currency", project.billing_currency),
-        ("FX rate", project.fx_rate), ("Project amount (FX)", project.project_cost_fx),
-        ("Travel cost (INR)", project.travel_cost_inr), ("Travel currency", project.travel_currency),
-        ("Travel FX rate", project.travel_fx_rate), ("Travel amount (FX)", project.travel_cost_fx),
-        ("Already agreed FTE arrangement", project.already_agreed_fte),
-    ])
-
-    def add_grid_table(title, headers, rows):
-        story.append(Paragraph(html.escape(title), styles["SowSection"]))
-        data = [[Paragraph(f"<b>{html.escape(str(h))}</b>", styles["SowSmall"]) for h in headers]]
-        for row in rows:
-            data.append([Paragraph(html.escape(fmt(v)), styles["SowSmall"]) for v in row])
-        if len(data) == 1:
-            data.append([Paragraph("No records provided", styles["SowSmall"])] + [Paragraph("", styles["SowSmall"]) for _ in headers[1:]])
-        widths = [268*mm / len(headers)] * len(headers)
-        table = Table(data, colWidths=widths, repeatRows=1)
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#35245e")),
-            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-            ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#d8d4e3")),
-            ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("LEFTPADDING", (0,0), (-1,-1), 4), ("RIGHTPADDING", (0,0), (-1,-1), 4),
-            ("TOPPADDING", (0,0), (-1,-1), 4), ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ]))
-        story.append(table)
-        story.append(Spacer(1, 2*mm))
-
-    add_grid_table("03 · Resource plan",
-        ["EMP ID", "Name", "Billing level", "Team", "Allocation", "Start", "End", "Responsibilities"],
-        [[r.employee_id, r.name, r.billing_level, r.team, f"{fmt(r.allocation_percent)}%", r.start_date, r.end_date, r.responsibilities] for r in project.resources])
-    add_grid_table("04 · Milestones & activities",
-        ["Milestone", "Action points", "Start", "End", "Description"],
-        [[m.milestone, m.action_points, m.start_date, m.end_date, m.description] for m in project.milestones])
-
-    for title, value in [
-        ("05 · Executive summary", project.executive_summary), ("Background", project.background),
-        ("In scope", project.in_scope), ("Out of scope", project.out_of_scope),
-        ("06 · Dependencies & risks", project.dependencies_risks), ("Required skills", project.required_skills),
-        ("Software required", project.software_required), ("Other notes", project.other_notes),
-        ("Declarations", project.declarations),
-    ]:
-        add_rich_section(title, value)
-
-    def add_page_number(canvas, doc):
-        canvas.saveState()
-        canvas.setFont("Helvetica", 7)
-        canvas.setFillColor(colors.HexColor("#777777"))
-        canvas.drawString(14*mm, 7*mm, f"SOW {project.project_code} · Record {project.id}")
-        canvas.drawRightString(283*mm, 7*mm, f"Page {doc.page}")
-        canvas.restoreState()
-
-    doc = SimpleDocTemplate(output_path, pagesize=landscape(A4),
-                            rightMargin=14*mm, leftMargin=14*mm,
-                            topMargin=12*mm, bottomMargin=13*mm,
-                            title=f"{project.project_code} - {project.project_name}")
-    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
     return filename
 
 
