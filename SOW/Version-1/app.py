@@ -910,6 +910,81 @@ def admin_generate_pdf(projectCode):
         return {"error": "PDF generation failed.", "details": str(exc)}, 500
 
 
+def _resolve_sow_entry(entry_id):
+    """Resolve a SOW by numeric database ID or by project code (active version first)."""
+    key = (entry_id or "").strip()
+    if key.isdigit():
+        project = db.session.get(SowProject, int(key))
+        if project is not None:
+            return project
+    project = (
+        SowProject.query
+        .filter(db.func.lower(SowProject.project_code) == key.lower(),
+                SowProject.active_flag == "Y")
+        .order_by(SowProject.id.desc())
+        .first()
+    )
+    if project is None:
+        project = (
+            SowProject.query
+            .filter(db.func.lower(SowProject.project_code) == key.lower())
+            .order_by(SowProject.id.desc())
+            .first()
+        )
+    return project
+
+
+@app.route("/statementofwork/view/<string:EntryId>", methods=["GET"])
+def project_view(EntryId):
+    """Show a branded PDF workspace for a saved SOW record."""
+    project = _resolve_sow_entry(EntryId)
+    if project is None:
+        return {"error": f"No SOW record found for '{EntryId}'."}, 404
+
+    pdf_filename = f"{re.sub(r'[^A-Za-z0-9_-]+', '_', project.project_code or 'SOW')}_{project.id}.pdf"
+    pdf_path = os.path.join(app.instance_path, "generated_pdfs", pdf_filename)
+    if not os.path.isfile(pdf_path):
+        try:
+            generate_project_pdf(project)
+        except Exception as exc:
+            app.logger.exception("Could not generate PDF for SOW %s", EntryId)
+            return {"error": "PDF generation failed.", "details": str(exc)}, 500
+
+    return render_template(
+        "pdf_viewer.html",
+        project=project,
+        pdf_filename=pdf_filename,
+        pdf_url=url_for("project_pdf", EntryId=project.id),
+        download_url=url_for("download_project_pdf", project_id=project.id),
+        print_url=url_for("print_project", project_id=project.id),
+    )
+
+
+@app.route("/statementofwork/pdf/<string:EntryId>", methods=["GET"])
+def project_pdf(EntryId):
+    """Serve the ReportLab PDF inline for the branded PDF viewer."""
+    project = _resolve_sow_entry(EntryId)
+    if project is None:
+        return {"error": f"No SOW record found for '{EntryId}'."}, 404
+
+    pdf_filename = f"{re.sub(r'[^A-Za-z0-9_-]+', '_', project.project_code or 'SOW')}_{project.id}.pdf"
+    pdf_dir = os.path.join(app.instance_path, "generated_pdfs")
+    pdf_path = os.path.join(pdf_dir, pdf_filename)
+
+    if not os.path.isfile(pdf_path):
+        try:
+            generate_project_pdf(project)
+        except Exception as exc:
+            app.logger.exception("Could not generate inline PDF for SOW %s", EntryId)
+            return {"error": "PDF generation failed.", "details": str(exc)}, 500
+
+    return send_from_directory(
+        pdf_dir, pdf_filename, mimetype="application/pdf",
+        as_attachment=False, download_name=pdf_filename,
+        max_age=0
+    )
+
+
 @app.route("/health")
 def health():
     return {"status": "ok"}

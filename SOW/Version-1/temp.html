@@ -1,0 +1,608 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 600 600"
+  width="600"
+  height="600"
+>
+  <defs>
+    <!-- Curved text paths -->
+    <path id="topArc" d="M 92,300 A 208,208 0 1,1 508,300" />
+    <path id="bottomArc" d="M 75,300 A 225,225 0 0,0 525,300" />
+
+    <!-- Clip path for the inner cream circle -->
+    <clipPath id="innerCircleClip">
+      <circle cx="300" cy="300" r="188" />
+    </clipPath>
+
+    <!-- Subtle gold gradient for terrain -->
+    <linearGradient id="hillGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#C8AF7E" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#A88E5B" stop-opacity="0.45" />
+    </linearGradient>
+    <linearGradient id="hillGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#B89E6C" stop-opacity="0.40" />
+      <stop offset="100%" stop-color="#967B48" stop-opacity="0.55" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Gold Rim -->
+  <circle cx="300" cy="300" r="286" fill="#C5A96F" />
+  <circle cx="300" cy="300" r="278" fill="#1B3B5A" />
+  <circle
+    cx="300"
+    cy="300"
+    r="271"
+    fill="none"
+    stroke="#C5A96F"
+    stroke-width="3"
+  />
+
+  <!-- Inner Cream Circle -->
+  <circle cx="300" cy="300" r="192" fill="#C5A96F" />
+  <circle cx="300" cy="300" r="188" fill="#F4EFE2" />
+
+  <!-- Subtle Hidden Maratha Artwork (Clipped inside inner circle) -->
+  <g clip-path="url(#innerCircleClip)">
+    <!-- Distant Sahyadri Mountain Ridges -->
+    <path
+      d="M 100,415 Q 180,385 260,405 T 420,390 T 510,410 L 510,500 L 100,500 Z"
+      fill="url(#hillGrad1)"
+    />
+    <path
+      d="M 100,430 Q 210,410 310,425 T 510,415 L 510,500 L 100,500 Z"
+      fill="url(#hillGrad2)"
+    />
+    <path
+      d="M 140,450 Q 270,425 380,455 T 500,445 L 500,500 L 140,500 Z"
+      fill="#B59B69"
+      opacity="0.35"
+    />
+
+    <!-- Raigad Fort Silhouette (Left) -->
+    <g fill="#B59B69" opacity="0.42">
+      <!-- Main Left Bastion -->
+      <rect x="148" y="378" width="26" height="36" />
+      <!-- Battlements -->
+      <rect x="148" y="373" width="4" height="5" />
+      <rect x="155" y="373" width="4" height="5" />
+      <rect x="162" y="373" width="4" height="5" />
+      <rect x="170" y="373" width="4" height="5" />
+
+      <!-- Connecting Wall -->
+      <rect x="174" y="390" width="24" height="24" />
+      <rect x="176" y="386" width="3" height="4" />
+      <rect x="182" y="386" width="3" height="4" />
+      <rect x="188" y="386" width="3" height="4" />
+      <rect x="194" y="386" width="3" height="4" />
+
+      <!-- Secondary Right Tower -->
+      <rect x="198" y="384" width="20" height="30" />
+      <rect x="198" y="380" width="3.5" height="4" />
+      <rect x="204" y="380" width="3.5" height="4" />
+      <rect x="210" y="380" width="3.5" height="4" />
+      <rect x="214.5" y="380" width="3.5" height="4" />
+
+      <!-- Bhagwa Dhwaj Flags on Fort -->
+      <line
+        x1="160"
+        y1="373"
+        x2="160"
+        y2="353"
+        stroke="#B59B69"
+        stroke-width="1.5"
+      />
+      <path d="M 160,354 L 176,358 L 168,361 L 176,365 L 160,363 Z" />
+
+      <line
+        x1="185"
+        y1="386"
+        x2="185"
+        y2="370"
+        stroke="#B59B69"
+        stroke-width="1.2"
+      />
+      <path d="M 185,371 L 198,374 L 191,376 L 198,379 L 185,378 Z" />
+
+      <line
+        x1="208"
+        y1="380"
+        x2="208"
+        y2="365"
+        stroke="#B59B69"
+        stroke-width="1.2"
+      />
+      <path d="M 208,366 L 220,369 L 214,371 L 220,374 L 208,373 Z" />
+    </g>
+
+    <!-- Chhatrapati Shivaji Maharaj Equestrian Silhouette (Right) -->
+    <!-- Detailed Chhatrapati Shivaji Maharaj Equestrian Silhouette -->
+    <g
+      transform="translate(356, 362) scale(0.78)"
+      fill="#9E824F"
+      stroke="#9E824F"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      opacity="0.52"
+    >
+      <!-- ================= HORSE ================= -->
+
+      <!-- Horse Tail -->
+      <path
+        d="
+        M 78,59
+        C 91,57 99,68 96,82
+        C 94,75 90,72 86,70
+        C 91,83 86,94 80,99
+        C 83,87 79,78 75,72 Z"
+      />
+
+      <!-- Hind Legs -->
+      <path
+        d="
+        M 72,72
+        C 76,79 79,87 78,96
+        L 75,101 L 68,100
+        L 69,96 L 67,82 L 63,74 Z"
+      />
+
+      <path
+        d="
+        M 81,69
+        C 86,77 88,86 86,96
+        L 83,101 L 77,100
+        L 79,95 L 76,80 L 73,72 Z"
+      />
+
+      <!-- Horse Body -->
+      <path
+        d="
+        M 27,54
+        C 29,48 38,45 48,47
+        L 69,48
+        C 78,48 84,54 83,63
+        C 82,72 75,78 63,78
+        L 40,76
+        C 30,75 24,67 27,54 Z"
+      />
+
+      <!-- Horse Chest -->
+      <path
+        d="
+        M 32,51
+        C 24,48 20,53 21,63
+        L 27,76
+        C 31,79 36,76 39,71
+        L 41,56 Z"
+      />
+
+      <!-- Front Legs -->
+      <path
+        d="
+        M 32,70
+        L 30,88
+        L 26,99
+        L 20,100
+        L 21,96
+        L 24,83
+        L 23,69 Z"
+      />
+
+      <path
+        d="
+        M 43,72
+        L 46,85
+        L 43,99
+        L 37,101
+        L 37,96
+        L 38,83
+        L 35,72 Z"
+      />
+
+      <!-- Horse Hooves -->
+      <path
+        d="
+        M 20,98 L 28,98 L 29,103
+        L 19,103 Z
+        M 36,98 L 44,98 L 44,103
+        L 35,103 Z
+        M 67,98 L 77,98 L 78,103
+        L 67,103 Z
+        M 77,98 L 85,98 L 86,103
+        L 76,103 Z"
+      />
+
+      <!-- Horse Neck -->
+      <path
+        d="
+        M 26,56
+        C 21,45 18,33 20,24
+        C 22,16 29,13 35,19
+        C 40,26 41,39 45,49
+        L 44,60 L 34,66 Z"
+      />
+
+      <!-- Horse Head -->
+      <path
+        d="
+        M 21,26
+        C 14,22 9,24 8,30
+        C 7,35 13,39 20,37
+        L 29,33 L 29,24 Z"
+      />
+
+      <!-- Horse Ears -->
+      <path
+        d="
+        M 22,20 L 19,10 L 26,18 Z
+        M 28,19 L 31,11 L 34,22 Z"
+      />
+
+      <!-- Horse Muzzle -->
+      <path
+        d="
+        M 9,29
+        C 4,29 3,34 8,37
+        L 17,39 L 20,34 Z"
+      />
+
+      <!-- Horse Mane -->
+      <path
+        d="
+        M 25,19
+        C 19,25 20,34 25,42
+        C 20,37 16,30 19,23
+        L 14,26 L 19,17
+        L 17,12 L 24,15
+        L 28,9 L 31,17 Z"
+      />
+
+      <!-- Horse Bridle -->
+      <g fill="none" stroke-width="1.5">
+        <path d="M 10,28 Q 19,22 29,27 L 32,42" />
+        <path d="M 10,33 Q 20,38 25,34" />
+        <path d="M 17,25 L 19,37" />
+        <path d="M 12,36 L 5,40" />
+      </g>
+
+      <!-- ================= SADDLE & ROYAL CLOTH ================= -->
+
+      <!-- Saddle -->
+      <path
+        d="
+        M 35,47
+        Q 48,41 64,47
+        L 72,59
+        Q 68,65 55,66
+        L 38,61 Z"
+      />
+
+      <!-- Decorative Horse Cloth (Jhool) -->
+      <path
+        d="
+        M 38,57
+        Q 53,65 70,57
+        L 76,76
+        Q 65,82 49,79
+        L 41,76 Z"
+        opacity="0.85"
+      />
+
+      <!-- Jhool Border -->
+      <path
+        d="
+        M 41,62 Q 56,69 72,62
+        M 44,70 Q 59,76 74,69"
+        fill="none"
+        stroke-width="1.5"
+      />
+
+      <!-- Decorative Cloth Tassels -->
+      <g fill="none" stroke-width="1.2">
+        <path
+          d="M 46,77 L 44,84 M 53,79 L 52,86
+                 M 61,79 L 62,86 M 69,77 L 72,83"
+        />
+      </g>
+
+      <!-- ================= SHIVAJI MAHARAJ ================= -->
+
+      <!-- Rider's Rear Leg -->
+      <path
+        d="
+        M 55,44
+        L 69,52
+        L 73,66
+        L 68,70
+        L 62,60
+        L 50,55 Z"
+      />
+
+      <!-- Rider's Front Leg -->
+      <path
+        d="
+        M 48,43
+        L 44,53
+        L 38,62
+        L 43,66
+        L 53,56
+        L 59,49 Z"
+      />
+
+      <!-- Royal Footwear -->
+      <path
+        d="
+        M 66,65 L 74,66 L 76,70
+        L 67,71 Z
+        M 37,61 L 43,64 L 42,69
+        L 35,66 Z"
+      />
+
+      <!-- Royal Angarkha / Upper Body -->
+      <path
+        d="
+        M 43,21
+        C 47,17 57,17 61,23
+        L 65,40
+        L 61,52
+        L 49,55
+        L 43,46
+        L 39,34 Z"
+      />
+
+      <!-- Angarkha Front Fold -->
+      <path
+        d="
+        M 47,23
+        L 54,35
+        L 50,50
+        L 45,44 Z"
+        fill="#F4EFE3"
+        opacity="0.18"
+      />
+
+      <!-- Royal Waist Sash (Patka) -->
+      <path
+        d="
+        M 42,39
+        Q 53,43 64,39
+        L 65,44
+        Q 53,48 43,44 Z"
+      />
+
+      <!-- Flowing Patka -->
+      <path
+        d="
+        M 60,44
+        L 67,47
+        L 72,58
+        L 66,55
+        L 59,49 Z"
+      />
+
+      <!-- Shoulder and Arm -->
+      <path
+        d="
+        M 58,23
+        C 64,20 68,23 68,29
+        L 63,35
+        L 59,32 Z"
+      />
+
+      <!-- Raised Sword Arm -->
+      <path
+        d="
+        M 46,24
+        L 39,13
+        L 35,5
+        L 39,2
+        L 47,13
+        L 53,21 Z"
+      />
+
+      <!-- Hand Holding Sword -->
+      <path
+        d="
+        M 34,7
+        Q 36,3 40,6
+        L 43,11
+        L 39,14
+        L 34,11 Z"
+      />
+
+      <!-- ================= BHAVANI TALWAR ================= -->
+
+      <!-- Sword Handle -->
+      <path
+        d="
+        M 35,8 L 31,5 L 33,2
+        L 38,5 L 41,8 L 39,11 Z"
+      />
+
+      <!-- Sword Guard -->
+      <path
+        d="
+        M 29,4
+        Q 35,0 41,7
+        L 39,10
+        Q 34,5 28,7 Z"
+      />
+
+      <!-- Curved Sword Blade -->
+      <path
+        d="
+        M 34,3
+        C 29,-8 25,-20 29,-36
+        C 28,-23 33,-11 38,-1
+        L 36,3 Z"
+      />
+
+      <!-- Sword Blade Highlight -->
+      <path
+        d="
+        M 29,-31
+        Q 30,-14 36,-3"
+        fill="none"
+        stroke="#F4EFE3"
+        stroke-width="0.9"
+        opacity="0.55"
+      />
+
+      <!-- ================= FACE & ROYAL JIRETOP ================= -->
+
+      <!-- Neck -->
+      <path
+        d="
+        M 48,17
+        L 59,17
+        L 59,23
+        L 49,25 Z"
+      />
+
+      <!-- Face Profile -->
+      <path
+        d="
+        M 47,9
+        C 47,4 52,2 57,5
+        C 62,7 62,13 59,17
+        L 54,20
+        L 49,17
+        L 46,13 Z"
+      />
+
+      <!-- Nose Profile -->
+      <path
+        d="
+        M 59,11
+        L 65,14
+        L 59,16 Z"
+      />
+
+      <!-- Royal Moustache -->
+      <path
+        d="
+        M 54,14
+        Q 58,12 60,15
+        Q 57,17 54,15
+        Q 50,18 48,15
+        Q 51,12 54,14 Z"
+      />
+
+      <!-- Eye -->
+      <circle cx="57" cy="10" r="0.9" fill="#F4EFE3" />
+
+      <!-- Jiretop Turban -->
+      <path
+        d="
+        M 45,10
+        Q 43,3 49,0
+        Q 57,-5 63,2
+        L 67,6
+        L 62,11
+        L 56,9
+        L 50,12 Z"
+      />
+
+      <!-- Turban Folds -->
+      <g fill="none" stroke="#F4EFE3" stroke-width="1" opacity="0.5">
+        <path d="M 48,5 Q 55,0 62,5" />
+        <path d="M 49,9 Q 55,5 62,8" />
+      </g>
+
+      <!-- Kalangi / Royal Turban Crest -->
+      <path
+        d="
+        M 57,1
+        Q 55,-7 61,-12
+        Q 59,-4 66,-2
+        L 62,3 Z"
+      />
+
+      <!-- Crest Feather Detail -->
+      <path
+        d="
+        M 60,-10 Q 61,-4 64,-2"
+        fill="none"
+        stroke="#F4EFE3"
+        stroke-width="1"
+      />
+
+      <!-- ================= RIDING DETAILS ================= -->
+
+      <!-- Reins -->
+      <g fill="none" stroke="#9E824F" stroke-width="1.5">
+        <path d="M 59,24 Q 42,30 28,33" />
+        <path d="M 62,25 Q 46,34 29,36" />
+      </g>
+
+      <!-- Saddle Strap -->
+      <path
+        d="
+        M 40,51 Q 52,57 65,51"
+        fill="none"
+        stroke="#F4EFE3"
+        stroke-width="1"
+        opacity="0.55"
+      />
+    </g>
+  </g>
+
+  <!-- Outer Ring Curved Typography -->
+  <text
+    fill="#D2B87E"
+    font-family="&#39;Segoe UI&#39;, Roboto, Helvetica, Arial, sans-serif"
+    font-size="33"
+    font-weight="700"
+    letter-spacing="3.5"
+  >
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+      STATEMENT OF WORK
+    </textPath>
+  </text>
+
+  <text
+    fill="#D2B87E"
+    font-family="&#39;Segoe UI&#39;, Roboto, Helvetica, Arial, sans-serif"
+    font-size="31"
+    font-weight="700"
+    letter-spacing="3.5"
+  >
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">
+      INTACT INSURANCE
+    </textPath>
+  </text>
+
+  <!-- Center Intact Logo -->
+  <g transform="translate(300, 292)">
+    <!-- Left Red Bracket -->
+    <path
+      d="M -112,-54 L -138,-54 L -138,54 L -112,54"
+      fill="none"
+      stroke="#C8102E"
+      stroke-width="9"
+      stroke-linecap="square"
+    />
+
+    <!-- Right Red Bracket -->
+    <path
+      d="M 112,-54 L 138,-54 L 138,54 L 112,54"
+      fill="none"
+      stroke="#C8102E"
+      stroke-width="9"
+      stroke-linecap="square"
+    />
+
+    <!-- "intact" Wordmark -->
+    <text
+      x="0"
+      y="23"
+      fill="#000000"
+      font-family="Georgia, &#39;Times New Roman&#39;, serif"
+      font-size="76"
+      font-weight="500"
+      text-anchor="middle"
+      letter-spacing="-1.5"
+    >
+      intact
+    </text>
+  </g>
+</svg>

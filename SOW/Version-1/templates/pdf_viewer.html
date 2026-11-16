@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ project.project_code }} · SOW PDF</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    :root{--viewer-navy:#173b59;--viewer-red:#c8102e;--viewer-gold:#c7a76a;--viewer-ink:#202b38;--viewer-muted:#778291}
+    body.sow-pdf-page{margin:0;background:#f1f3f6;color:var(--viewer-ink);font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+    .viewer-shell{max-width:1440px;margin:0 auto;padding:24px clamp(14px,3vw,38px) 34px}
+    .viewer-topline{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}
+    .viewer-brand{display:flex;align-items:center;gap:13px;min-width:0}
+    .viewer-brand img{width:54px;height:48px;object-fit:contain;background:#fff;border:1px solid #e5e8ed;border-radius:10px;padding:4px}
+    .viewer-brand-copy{min-width:0}
+    .viewer-eyebrow{font-size:10px;letter-spacing:1.7px;font-weight:800;color:var(--viewer-red);margin-bottom:4px}
+    .viewer-brand h1{font-size:21px;line-height:1.2;margin:0;color:var(--viewer-navy);font-weight:750}
+    .viewer-brand p{margin:4px 0 0;color:var(--viewer-muted);font-size:12px}
+    .viewer-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+    .viewer-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:39px;padding:0 14px;border-radius:8px;border:1px solid #dce1e7;background:#fff;color:#344255;text-decoration:none;font-size:12px;font-weight:700;cursor:pointer;transition:.18s ease}
+    .viewer-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px #1c2a3a12;border-color:#b9c4d0}
+    .viewer-btn.primary{background:var(--viewer-navy);border-color:var(--viewer-navy);color:#fff}
+    .viewer-btn.accent{background:var(--viewer-red);border-color:var(--viewer-red);color:#fff}
+    .viewer-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .viewer-meta-card{background:#fff;border:1px solid #e5e9ef;border-radius:10px;padding:12px 15px;min-width:0}
+    .viewer-meta-card span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8993a0;font-weight:800;margin-bottom:5px}
+    .viewer-meta-card strong{display:block;font-size:13px;color:#27394c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pdf-panel{background:#fff;border:1px solid #dce2e9;border-radius:14px;overflow:hidden;box-shadow:0 14px 38px #24364a12}
+    .pdf-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 17px;background:linear-gradient(110deg,#173b59,#244d6b);color:#fff}
+    .pdf-file-title{display:flex;align-items:center;gap:10px;min-width:0}
+    .pdf-file-icon{width:32px;height:32px;border-radius:8px;background:#ffffff1c;display:grid;place-items:center;font-size:15px}
+    .pdf-file-title strong{display:block;font-size:12px;letter-spacing:.2px}
+    .pdf-file-title small{display:block;color:#d5e0e9;font-size:10px;margin-top:3px}
+    .pdf-status{font-size:10px;color:#f3e7c9;border:1px solid #ffffff40;border-radius:20px;padding:5px 9px;white-space:nowrap}
+    .pdf-stage{height:calc(100vh - 285px);min-height:590px;background:#e7ebef;padding:18px;display:flex;justify-content:center}
+    .pdf-frame-wrap{width:min(100%,1100px);height:100%;background:#fff;border-radius:5px;overflow:hidden;box-shadow:0 3px 18px #172b3b20}
+    .pdf-frame{display:block;width:100%;height:100%;border:0;background:#fff}
+    .viewer-foot{display:flex;justify-content:space-between;gap:12px;padding:11px 16px;color:#8993a0;font-size:10px;border-top:1px solid #edf0f3}
+    .viewer-foot strong{color:#566476}
+    @media(max-width:800px){.viewer-topline{align-items:flex-start;flex-direction:column}.viewer-actions{width:100%}.viewer-actions .viewer-btn{flex:1}.viewer-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.pdf-stage{height:calc(100vh - 360px);min-height:480px;padding:8px}.viewer-brand h1{font-size:18px}}
+    @media(max-width:480px){.viewer-shell{padding:15px 10px 24px}.viewer-meta-card{padding:10px}.viewer-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.viewer-btn{padding:0 8px;font-size:11px}.pdf-stage{min-height:430px}.pdf-panel-head{padding:11px}.viewer-foot{flex-direction:column}}
+  </style>
+</head>
+<body class="sow-pdf-page">
+  <main class="viewer-shell">
+    <header class="viewer-topline">
+      <div class="viewer-brand">
+        <img src="{{ url_for('static', filename='sow_logo.png') }}" alt="SOW logo">
+        <div class="viewer-brand-copy">
+          <div class="viewer-eyebrow">STATEMENT OF WORK</div>
+          <h1>Document centre</h1>
+          <p>Review the approved project document in a clean, focused workspace.</p>
+        </div>
+      </div>
+      <nav class="viewer-actions" aria-label="PDF actions">
+        <a class="viewer-btn" href="{{ url_for('list_projects') }}">← Saved SOWs</a>
+        <a class="viewer-btn" href="{{ print_url }}">Preview details</a>
+        <a class="viewer-btn" href="{{ pdf_url }}" target="_blank" rel="noopener">Open in new tab ↗</a>
+        <a class="viewer-btn primary" href="{{ download_url }}">↓ Download PDF</a>
+      </nav>
+    </header>
+
+    <section class="viewer-meta" aria-label="SOW information">
+      <div class="viewer-meta-card"><span>Project code</span><strong>{{ project.project_code }}</strong></div>
+      <div class="viewer-meta-card"><span>Project name</span><strong>{{ project.project_name }}</strong></div>
+      <div class="viewer-meta-card"><span>Version</span><strong>{{ project.sow_version or 'V1' }}</strong></div>
+      <div class="viewer-meta-card"><span>Record status</span><strong>{{ 'Active' if project.active_flag == 'Y' else 'Archived' }}</strong></div>
+    </section>
+
+    <section class="pdf-panel">
+      <div class="pdf-panel-head">
+        <div class="pdf-file-title">
+          <div class="pdf-file-icon">▤</div>
+          <div><strong>{{ project.project_code }} · Statement of Work</strong><small>{{ pdf_filename }}</small></div>
+        </div>
+        <span class="pdf-status">● PDF ready</span>
+      </div>
+      <div class="pdf-stage">
+        <div class="pdf-frame-wrap">
+          <iframe class="pdf-frame"
+                  src="{{ pdf_url }}#toolbar=0&navpanes=0&scrollbar=1&view=FitH"
+                  title="Statement of Work PDF"
+                  loading="eager"></iframe>
+        </div>
+      </div>
+      <footer class="viewer-foot">
+        <span><strong>Confidential project document</strong> · For internal business use</span>
+        <span>Generated using the SOW ReportLab PDF engine</span>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

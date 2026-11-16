@@ -24,6 +24,7 @@
     <a class="btn btn-light" href="{{ url_for('index') }}">← New SOW</a>
     <a class="btn btn-light" href="{{ url_for('list_projects') }}">Saved SOWs</a>
     <a class="btn btn-light" href="{{ url_for('edit_project', project_id=project.id) }}">Edit this SOW</a>
+    <a class="btn btn-light" href="{{ url_for('project_view', EntryId=project.id) }}">Open PDF Viewer</a>
     {% if pdf_exists %}<a class="btn btn-light" href="{{ url_for('download_project_pdf', project_id=project.id) }}">Download saved PDF ⤓</a>{% endif %}
     <button class="btn btn-primary" onclick="window.print()">Print preview</button>
   {% endif %}

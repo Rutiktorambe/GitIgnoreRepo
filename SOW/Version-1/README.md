@@ -106,3 +106,11 @@ Example: `/admin/pdf/genrate/PRJ001`
 
 ### PDF generation (ReportLab only)
 The preview page and generated PDF use the same SOW sections, field order, project data, and SOW/Intact logos. ReportLab reproduces the visual structure in a native PDF layout; browser-only CSS effects may not render identically. No Chromium installation is required.
+
+
+### Branded SOW PDF viewer routes
+
+- `GET /statementofwork/view/<EntryId>` opens the branded PDF document centre. `EntryId` may be the database project ID or the project code.
+- `GET /statementofwork/pdf/<EntryId>` serves the generated ReportLab PDF inline for the viewer.
+- The viewer has project metadata, a custom action bar, download/open-in-new-tab actions, and a responsive PDF viewing surface.
+- The existing `/admin/pdf/genrate/<projectCode>` endpoint remains available and the viewer can reuse the same generated PDF.
